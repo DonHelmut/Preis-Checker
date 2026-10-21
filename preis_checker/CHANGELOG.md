@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+- Volles Chromium im neuen Headless-Modus (Playwright 1.56), passender User-Agent ohne „HeadlessChrome“ → weniger Bot-Sperren
+- Wartet auf Cloudflare-Zwischenseiten, gesperrte Shops heißen jetzt „Blockiert (Bot-Schutz)“
+
 ## 1.0.1
 - Fix: parallele Shop-Abfragen liefen in Threads und haben sich gegenseitig umgeleitet – jetzt eigener Prozess je Browser
 

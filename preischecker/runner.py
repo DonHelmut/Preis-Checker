@@ -63,6 +63,14 @@ FORTSCHRITT = Fortschritt()
 NAECHSTE_PRUEFUNG: dict = {"zeit": None}
 
 
+FEHLER_NAMEN = {"BlockiertError": "blockiert (Bot-Schutz)", "TimeoutError": "Zeitüberschreitung"}
+
+
+def fehler_kurz(fehlertext: str) -> str:
+    art = fehlertext.split(":")[0]
+    return FEHLER_NAMEN.get(art, "nicht erreichbar" if "net::" in fehlertext else art)
+
+
 def sammeln(cfg: dict, auftraege: list[tuple[str, str, str]], fortschritt: Fortschritt,
             debug: bool = False, status_speichern: bool = True) -> tuple[dict, dict]:
     """Shops parallel durchsuchen (je paralleler Browser ein Prozess). auftraege = [(suche, shop, url_vorlage)].
@@ -77,7 +85,7 @@ def sammeln(cfg: dict, auftraege: list[tuple[str, str, str]], fortschritt: Forts
     def verbuchen(suche, shop, gefunden, fehlertext, dauer):
         angebote.setdefault(suche, []).extend(gefunden)
         if fehlertext:
-            fehler.setdefault(suche, []).append(f"{shops.shop_name(shop)}: {fehlertext.split(':')[0]}")
+            fehler.setdefault(suche, []).append(f"{shops.shop_name(shop)}: {fehler_kurz(fehlertext)}")
         if status_speichern:
             db.shop_status_setzen(shop, fehlertext is None, len(gefunden), dauer, fehlertext)
         fortschritt.schritt_fertig(f"{shops.shop_name(shop)}: {suche}")

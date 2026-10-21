@@ -14,11 +14,6 @@ from playwright.sync_api import Page, sync_playwright
 
 from ..config import DATA_DIR
 
-UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
-)
-
 # Findet wiederholte Kacheln: Elemente mit Preis + Stichwort, die als
 # Geschwister unter demselben Eltern-Element liegen. Liefert deren innerText.
 FIND_CARDS_JS = r"""
@@ -58,16 +53,23 @@ COOKIE_BUTTONS = re.compile(r"^(alle akzeptieren|akzeptieren|geht klar|zustimmen
 def browser_page(cfg: dict):
     bcfg = cfg.get("browser", {})
     with sync_playwright() as p:
+        exe = os.environ.get("PREISCHECKER_CHROMIUM")
         browser = p.chromium.launch(
-            executable_path=os.environ.get("PREISCHECKER_CHROMIUM") or None,
+            # Volles Chromium im neuen Headless-Modus: von Bot-Schutz (Cloudflare & Co.) schwerer zu erkennen
+            channel=None if exe else "chromium",
+            executable_path=exe or None,
             headless=bcfg.get("headless", True),
             args=["--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
         )
+        haupt = browser.version.split(".")[0]
         ctx = browser.new_context(
-            user_agent=UA,
+            # Zur echten Browser-Version passend, ohne "HeadlessChrome"
+            user_agent=f"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                       f"Chrome/{haupt}.0.0.0 Safari/537.36",
             locale="de-DE",
             timezone_id="Europe/Berlin",
             viewport={"width": 1366, "height": 900},
+            extra_http_headers={"Accept-Language": "de-DE,de;q=0.9,en;q=0.6"},
         )
         ctx.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         page = ctx.new_page()
@@ -86,6 +88,26 @@ def browser_page(cfg: dict):
             yield page
         finally:
             browser.close()
+
+
+_SCHUTZSEITE = re.compile(r"nur einen moment|just a moment|attention required|checking your browser|bot detected"
+                          r"|access denied|zugriff verweigert|captcha|sicherheitsüberprüfung", re.I)
+
+
+def schutzseite_abwarten(page: Page, sekunden: int = 20) -> bool:
+    """Wartet, bis eine Bot-Schutz-Zwischenseite (z. B. Cloudflare) von selbst weiterleitet.
+
+    Liefert False, wenn die Schutzseite bleibt.
+    """
+    ende = time.time() + sekunden
+    while time.time() < ende:
+        try:
+            if not _SCHUTZSEITE.search(page.title() or ""):
+                return True
+        except Exception:
+            pass
+        page.wait_for_timeout(1000)
+    return False
 
 
 def accept_cookies(page: Page) -> None:

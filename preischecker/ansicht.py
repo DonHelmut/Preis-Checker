@@ -70,7 +70,8 @@ def shop_uebersicht(cfg: dict) -> list[dict]:
         if not st:
             zustand, text = "unbekannt", "Noch nicht abgefragt"
         elif not st["ok"]:
-            zustand, text = "fehler", "Fehler"
+            from .runner import fehler_kurz
+            zustand, text = "fehler", fehler_kurz(st["fehler"] or "Fehler").capitalize()
         elif st["treffer"] == 0:
             zustand, text = "warnung", "Keine Preise erkannt"
         else:

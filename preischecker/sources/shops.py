@@ -17,6 +17,10 @@ from . import browser as b
 log = logging.getLogger(__name__)
 
 
+class BlockiertError(RuntimeError):
+    """Shop zeigt eine Bot-Schutz-Seite (Cloudflare, Captcha …)."""
+
+
 @dataclass(frozen=True)
 class Shop:
     key: str
@@ -150,6 +154,9 @@ def passt(angebot: ProduktAngebot, artikel: dict) -> bool:
 def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool = False) -> list[ProduktAngebot]:
     url = url_vorlage.replace("{p}", quote(suche)).replace("{q}", quote_plus(suche))
     page.goto(url, wait_until="domcontentloaded")
+    if not b.schutzseite_abwarten(page):
+        b.dump_debug(page, f"{shop}-{norm(suche)[:30]}-schutz", [])
+        raise BlockiertError(f"Bot-Schutz: {page.title()[:60]}")
     b.accept_cookies(page)
     cards = b.wait_for_cards(page, r"€|,[-–]", timeout_s=min(cfg["browser"].get("timeout_sekunden", 60), 30),
                              min_len=25, min_cards=2)
