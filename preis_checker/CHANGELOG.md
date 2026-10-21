@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.6
+- Diagnose läuft im Hintergrund (`/api/diagnose` → id, Ergebnis unter `/api/diagnose/<id>`)
+
 ## 1.0.5
 - Captcha-Seiten (z. B. Cloudflare Turnstile bei Mindfactory) werden als Sperre erkannt; Captchas werden nicht gelöst
 - Gesperrte Shops pausieren 12 Stunden (`produkte.sperre_pause_stunden`), Shop-Status zeigt „pausiert bis …“
