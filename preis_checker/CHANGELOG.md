@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5
+- Captcha-Seiten (z. B. Cloudflare Turnstile bei Mindfactory) werden als Sperre erkannt; Captchas werden nicht gelöst
+- Gesperrte Shops pausieren 12 Stunden (`produkte.sperre_pause_stunden`), Shop-Status zeigt „pausiert bis …“
+
 ## 1.0.4
 - Galaxus-Preisformat („449.–“) wird erkannt
 - Bot-Schutz: zweiter Anlauf nach Neuladen, „Human Verification“ (Euronics) erkannt

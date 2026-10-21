@@ -41,3 +41,15 @@ def test_parallel_sammeln_und_verlauf(tmp_path, monkeypatch):
     assert status["geizhals"]["ok"] == 1 and status["geizhals"]["ok_gesamt"] == 2
     assert status["saturn"]["fehler_gesamt"] == 1
     assert not runner.FORTSCHRITT.aktiv and runner.FORTSCHRITT.fertig == 6
+
+
+def test_gesperrte_shops_pausieren(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    db.shop_status_setzen("mindfactory", False, 0, 3.0, "BlockiertError: Bot-Schutz: SECURITY CHECK")
+    db.shop_status_setzen("otto", False, 0, 3.0, "TimeoutError: zu langsam")
+    db.shop_status_setzen("geizhals", True, 12, 3.0, None)
+    assert set(db.gesperrte_shops(12)) == {"mindfactory"}
+    cfg = {"produkte": {"sperre_pause_stunden": 12}}
+    a = [("x", "mindfactory", "u"), ("x", "otto", "u"), ("x", "geizhals", "u")]
+    assert [s for _, s, _ in runner._ohne_gesperrte(cfg, a)] == ["otto", "geizhals"]
+    assert runner._ohne_gesperrte({"produkte": {"sperre_pause_stunden": 0}}, a) == a

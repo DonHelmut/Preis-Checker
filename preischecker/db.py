@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .config import DATA_DIR
 
@@ -129,6 +129,17 @@ def shop_status_setzen(shop: str, ok: bool, treffer: int, dauer: float, fehler: 
             (shop, datetime.now().isoformat(timespec="seconds"), int(ok), treffer, round(dauer, 1), fehler,
              int(ok), int(not ok)),
         )
+
+
+def gesperrte_shops(stunden: float) -> dict[str, str]:
+    """Shops, die innerhalb der letzten `stunden` eine Bot-Sperre gemeldet haben: shop -> Zeitpunkt."""
+    if stunden <= 0:
+        return {}
+    grenze = (datetime.now() - timedelta(hours=stunden)).isoformat(timespec="seconds")
+    with connect() as con:
+        rows = con.execute("SELECT shop, zeit FROM shop_status WHERE ok=0 AND fehler LIKE 'BlockiertError%' AND zeit>=?",
+                           (grenze,)).fetchall()
+    return {r["shop"]: r["zeit"] for r in rows}
 
 
 def shop_status_alle() -> dict[str, dict]:

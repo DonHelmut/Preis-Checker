@@ -95,6 +95,11 @@ _SCHUTZSEITE = re.compile(r"nur einen moment|just a moment|attention required|ch
                           r"|access denied|zugriff verweigert|captcha|sicherheitsüberprüfung", re.I)
 
 
+# Captcha-Seiten ohne eindeutigen Titel (z. B. Turnstile-Formular). Captchas werden nie gelöst,
+# der Shop gilt dann als gesperrt und wird eine Weile pausiert.
+_CAPTCHA_SELEKTOR = ".cf-turnstile, #captcha_form, iframe[src*='captcha'], iframe[src*='challenges.cloudflare.com']"
+
+
 def schutzseite_abwarten(page: Page, sekunden: int = 20) -> bool:
     """Wartet, bis eine Bot-Schutz-Zwischenseite (z. B. Cloudflare) von selbst weiterleitet.
 
@@ -103,7 +108,7 @@ def schutzseite_abwarten(page: Page, sekunden: int = 20) -> bool:
     ende = time.time() + sekunden
     while time.time() < ende:
         try:
-            if not _SCHUTZSEITE.search(page.title() or ""):
+            if not _SCHUTZSEITE.search(page.title() or "") and not page.locator(_CAPTCHA_SELEKTOR).count():
                 return True
         except Exception:
             pass
