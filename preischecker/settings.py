@@ -47,8 +47,6 @@ ABSCHNITTE = [
         ("pruefung.benachrichtigen_ab_euro_jahr", "Vertrags-Meldung ab Ersparnis", "float", "€/Jahr"),
     ]),
     ("Benachrichtigung", "Leer lassen, was nicht genutzt wird", [
-        ("benachrichtigung.ha_dienst", "HA-Benachrichtigungsdienst", "text",
-         "nur im Add-on, z. B. notify.mobile_app_dein_handy oder persistent_notification.create"),
         ("benachrichtigung.webhook_url", "Home-Assistant-Webhook", "text", "http://<ha-ip>:8123/api/webhook/preischecker"),
         ("benachrichtigung.ntfy_topic", "ntfy-Topic", "text", ""),
         ("benachrichtigung.telegram_bot_token", "Telegram Bot-Token", "password", ""),
@@ -116,6 +114,9 @@ def uebernehmen(cfg: dict, form) -> list[str]:
                 continue  # leeres Passwortfeld = unverändert lassen
             put(cfg, pfad, wert)
 
+    if "ha_dienste_feld" in form:  # nur wenn die Checkboxen angezeigt wurden
+        put(cfg, "benachrichtigung.ha_dienste", form.getlist("ha_dienste") or None)
+        put(cfg, "benachrichtigung.ha_dienst", None)
     put(cfg, "produkte.quellen", [q for q in QUELLEN if f"quelle_{q}" in form] or None)
     liste = []
     spalten = {f: form.getlist(f"p_{f}") for f in PRODUKT_FELDER}

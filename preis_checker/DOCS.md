@@ -17,7 +17,7 @@ Werden automatisch angelegt, keine YAML nötig:
 - `sensor.preischecker_strom_ersparnis`, `sensor.preischecker_internet_ersparnis`
 
 ## Benachrichtigung
-Einstellungen → **HA-Benachrichtigungsdienst**, z. B. `notify.mobile_app_<handy>` → „Speichern + Testnachricht“.
+Einstellungen → **Benachrichtigen an**: eigenes Handy anhaken (jeder für sich, mehrere möglich) → „Speichern + Testnachricht“.
 
 ## Probleme
 Keine Treffer? Im Add-on-Log nach „Debug:“ suchen. Screenshots/HTML liegen unter `/data/debug/` im Add-on.

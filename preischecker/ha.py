@@ -22,6 +22,11 @@ def aktiv() -> bool:
     return bool(os.environ.get("SUPERVISOR_TOKEN"))
 
 
+def _get(pfad: str):
+    req = urllib.request.Request(API + pfad, headers={"Authorization": f"Bearer {os.environ['SUPERVISOR_TOKEN']}"})
+    return json.loads(urllib.request.urlopen(req, timeout=15).read())
+
+
 def _post(pfad: str, daten: dict) -> None:
     req = urllib.request.Request(
         API + pfad, data=json.dumps(daten).encode(), method="POST",
@@ -80,3 +85,25 @@ def sync_schleife(config_path=None) -> None:
 def benachrichtigen(dienst: str, text: str) -> None:
     domain, _, service = dienst.partition(".")
     _post(f"/services/{domain}/{service}", {"title": "Preis-Checker", "message": text})
+
+
+def dienst_name(dienst: str) -> str:
+    if dienst == "persistent_notification.create":
+        return "HA-Glocke (Benachrichtigungen in HA)"
+    name = dienst.split(".", 1)[1].removeprefix("mobile_app_").replace("_", " ")
+    return name.title()
+
+
+def notify_dienste() -> list[tuple[str, str]]:
+    """Handys (mobile_app) + HA-Glocke als (dienst, anzeigename)."""
+    if not aktiv():
+        return []
+    try:
+        domains = _get("/services")
+    except Exception as e:
+        log.warning("HA-Dienste nicht abrufbar: %s", e)
+        return []
+    notify = next((d["services"] for d in domains if d.get("domain") == "notify"), {})
+    dienste = sorted(f"notify.{s}" for s in notify if s.startswith("mobile_app_"))
+    dienste.append("persistent_notification.create")
+    return [(d, dienst_name(d)) for d in dienste]

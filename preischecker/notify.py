@@ -58,6 +58,13 @@ def senden_produkt(cfg: dict, ergebnis: dict, vorher: dict | None) -> None:
         "ziel_erreicht": ergebnis.get("ziel_erreicht", False), "gruende": ergebnis.get("gruende") or []})
 
 
+def ha_dienste(n: dict) -> list[str]:
+    dienste = list(n.get("ha_dienste") or [])
+    if n.get("ha_dienst") and n["ha_dienst"] not in dienste:  # alte Einzel-Einstellung
+        dienste.append(n["ha_dienst"])
+    return dienste
+
+
 def _verteilen(cfg: dict, text: str, payload: dict) -> None:
     n = cfg["benachrichtigung"]
     try:
@@ -71,8 +78,12 @@ def _verteilen(cfg: dict, text: str, payload: dict) -> None:
             _post(f"https://ntfy.sh/{n['ntfy_topic']}", text.encode("utf-8"), {"Title": "Preis-Checker"})
         if n.get("webhook_url"):
             _post(n["webhook_url"], json.dumps({"text": text, **payload}).encode(), {"Content-Type": "application/json"})
-        if n.get("ha_dienst") and ha.aktiv():
-            ha.benachrichtigen(n["ha_dienst"], text)
+        if ha.aktiv():
+            for dienst in ha_dienste(n):
+                try:
+                    ha.benachrichtigen(dienst, text)
+                except Exception as e:
+                    log.error("HA-Dienst %s fehlgeschlagen: %s", dienst, e)
     except Exception as e:  # Benachrichtigung darf den Lauf nicht abbrechen
         log.error("Benachrichtigung fehlgeschlagen: %s", e)
 
