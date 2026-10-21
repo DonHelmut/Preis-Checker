@@ -49,7 +49,12 @@ In Docker: `docker compose exec preischecker python -m preischecker debug strom`
 - **Internet**: Ø-Monatspreis über die Mindestlaufzeit (Aktionsmonate + reguläre Monate + Anschlussgebühr − Bonus) × 12, verglichen mit dem aktuellen Monatspreis × 12.
 - „Kündigen bis“ = Vertragsende − Kündigungsfrist.
 - **Produkte**: günstigster Treffer über alle Quellen (Preis ohne Versand). Treffer zählt nur, wenn alle Wörter aus `suche` (oder `muss_enthalten`) im Namen stehen, kein Wort aus `darf_nicht_enthalten`, Preis zwischen `min_preis`/`max_preis`. Nicht lieferbare werden bei `nur_lieferbar: true` ausgeblendet.
-- Produkt-Meldung: wenn Zielpreis erstmals erreicht oder darunter ein neuer Tiefstpreis auftaucht (kein tägliches Wiederholen).
+- **Schnäppchen** (auch ohne Zielpreis), wenn eins zutrifft:
+  - bester Preis ≥ `schnaeppchen_prozent` (15 %) unter dem Median der bisherigen Bestpreise (ab 4 Messungen)
+  - ein Shop ≥ `markt_prozent` (25 %) unter dem Median der anderen Shops (Preisfehler)
+  - Shop-Rabatt (Streichpreis/UVP) ≥ `schnaeppchen_prozent`
+- Shop-Aktionen („Deal“, „Angebot“, „statt“, „-20 %“) werden als `aktion` markiert.
+- Produkt-Meldung: bei Zielpreis oder Schnäppchen, erneut nur wenn der Preis weiter fällt.
 
 ## Weitere Shops
 
@@ -92,7 +97,8 @@ rest:
         value_template: "{{ value_json.produkte['RX 9070 XT'].bester_preis }}"
         unit_of_measurement: "€"
         json_attributes_path: "$.produkte['RX 9070 XT']"
-        json_attributes: [shop, name, url, zielpreis, ziel_erreicht, zeit, top]
+        json_attributes: [anzeige, shop, name, url, aktion, rabatt_prozent, schnaeppchen, gruende,
+                          zielpreis, ziel_erreicht, durchschnitt, zeit, top]
       - name: Strom Ersparnis
         value_template: "{{ value_json.strom.beste_ersparnis_jahr | default(0) }}"
         unit_of_measurement: "€"

@@ -59,7 +59,9 @@ def produkte_pruefen(cfg: dict, debug: bool = False) -> list[dict]:
                 except Exception as e:
                     log.warning("%s / %s fehlgeschlagen: %s", shop, artikel["suche"], e)
                     fehler.append(f"{shop}: {type(e).__name__}")
-            ergebnis = compare.produkt(cfg, artikel, angebote)
+            kat = f"produkt:{artikel['suche']}"
+            verlauf = [v["bestes_jahr"] for v in db.verlauf(kat, 120) if v["bestes_jahr"] is not None]
+            ergebnis = compare.produkt(cfg, artikel, angebote, verlauf)
             if not ergebnis["angebote"]:
                 fehler.append("Keine passenden Angebote")
             vorher = db.letzte(ergebnis["kategorie"])

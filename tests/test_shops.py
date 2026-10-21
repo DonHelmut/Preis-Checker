@@ -42,3 +42,37 @@ def test_melden_nur_bei_neuem_tief():
     assert not notify.produkt_melden({}, neu, {"ziel_erreicht": True, "bester_preis": 600})
     assert notify.produkt_melden({}, neu, {"ziel_erreicht": True, "bester_preis": 610})
     assert not notify.produkt_melden({}, {"ziel_erreicht": False, "bester_preis": 700}, None)
+
+
+def test_aktion_und_streichpreis():
+    a = parse_produkt({"text": "Deal der Woche\nASUS Prime RX 9070 XT\nstatt 699,00 €\n579,00 €", "href": ""}, "mindfactory")
+    assert a.preis == 579 and a.alter_preis == 699 and a.aktion
+    assert a.to_dict()["rabatt_prozent"] == 17.2
+    b = parse_produkt({"text": "ASUS Prime RX 9070 XT\n649,00 €", "href": ""}, "alternate")
+    assert not b.aktion and b.alter_preis is None
+
+
+CFG2 = {"produkte": {"nur_lieferbar": True, "schnaeppchen_prozent": 15, "markt_prozent": 25}}
+ART = {"suche": "RX 9070 XT"}
+
+
+def test_schnaeppchen_unter_verlauf():
+    e = compare.produkt(CFG2, ART, [ProduktAngebot("RX 9070 XT", 520, "alternate")], verlauf=[650, 640, 660, 650])
+    assert e["schnaeppchen"] and e["durchschnitt"] == 650 and "unter Ø" in e["gruende"][0]
+    e = compare.produkt(CFG2, ART, [ProduktAngebot("RX 9070 XT", 620, "alternate")], verlauf=[650, 640, 660, 650])
+    assert not e["schnaeppchen"]
+    e = compare.produkt(CFG2, ART, [ProduktAngebot("RX 9070 XT", 400, "alternate")], verlauf=[650])
+    assert not e["schnaeppchen"]  # zu wenig Verlauf
+
+
+def test_schnaeppchen_preisfehler_ein_shop():
+    angebote = [ProduktAngebot("RX 9070 XT A", 399, "kleinshop"), ProduktAngebot("RX 9070 XT B", 629, "alternate"),
+                ProduktAngebot("RX 9070 XT C", 649, "mindfactory")]
+    e = compare.produkt(CFG2, ART, angebote)
+    assert e["schnaeppchen"] and e["bester_shop"] == "kleinshop" and "anderen Shops" in e["gruende"][0]
+
+
+def test_meldetext():
+    e = compare.produkt(CFG2, ART, [ProduktAngebot("RX 9070 XT", 520, "alternate", "https://x")], verlauf=[650] * 4)
+    t = notify.produkt_text(e)
+    assert t.startswith("Schnäppchen: RX 9070 XT") and "520.00 € bei alternate" in t and "https://x" in t

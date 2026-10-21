@@ -46,3 +46,19 @@ def test_api_status_produkte(tmp_path, monkeypatch):
     assert p["RX 9070 XT"]["bester_preis"] == 629 and p["RX 9070 XT"]["ziel_erreicht"]
     assert p["RX 9070 XT"]["url"] == "https://x/1"
     assert p["Switch 2"]["bester_preis"] is None
+
+
+def test_api_anzeige(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    cfg_path = tmp_path / "config.yaml"
+    artikel = {"suche": "Switch 2"}
+    cfg_path.write_text(yaml.safe_dump({"produkte": {"aktiv": True, "liste": [artikel]}}))
+    from preischecker.config import load_config
+    from preischecker.models import ProduktAngebot
+    db.speichern(compare.produkt(load_config(cfg_path), artikel,
+                                 [ProduktAngebot("Nintendo Switch 2", 449.9, "geizhals", aktion=True)]))
+    from preischecker.web import create_app
+    app = create_app(cfg_path).test_client()
+    p = app.get("/api/status").get_json()["produkte"]["Switch 2"]
+    assert p["anzeige"] == "449,90 € bei geizhals" and p["aktion"] is True
+    assert "Aktion" in app.get("/").get_data(as_text=True)

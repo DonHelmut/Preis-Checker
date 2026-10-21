@@ -25,6 +25,7 @@ td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
 button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
 button[disabled] { opacity:.6; }
 a { color:var(--accent); }
+.tag { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px; font-size:12px; background:var(--good); color:var(--card); }
 .err { background:color-mix(in srgb, var(--bad) 12%, transparent); padding:8px 10px; border-radius:6px; }
 </style>
 </head>
@@ -47,7 +48,8 @@ a { color:var(--accent); }
       <tr>
         <td>{{ p.artikel.suche }}</td>
         {% if e and e.angebote %}{% set a = e.angebote[0] %}
-          <td class="num {{ 'good' if e.ziel_erreicht }}"><b>{{ "%.2f"|format(a.preis) }} €</b></td>
+          <td class="num {{ 'good' if e.ziel_erreicht or e.schnaeppchen }}"><b>{{ "%.2f"|format(a.preis) }} €</b>
+            {% if e.schnaeppchen %}<span class="tag" title="{{ e.gruende|join(' · ') }}">Schnäppchen</span>{% elif a.aktion %}<span class="tag">Aktion</span>{% endif %}</td>
           <td>{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener" title="{{ a.name }}">{{ a.shop }}</a>{% else %}{{ a.shop }}{% endif %}</td>
         {% else %}
           <td class="num muted">–</td><td class="muted">{{ e.fehler if e else "noch nicht geprüft" }}</td>
@@ -56,10 +58,11 @@ a { color:var(--accent); }
         <td class="num">{{ "%.2f"|format(p.tiefst) if p.tiefst is not none else "–" }}</td>
         <td class="muted">{{ e.zeit if e else "" }}</td>
       </tr>
+      {% if e and e.gruende %}<tr><td colspan="6" class="good">{{ e.gruende|join(" · ") }}</td></tr>{% endif %}
       {% if e and e.angebote|length > 1 %}
       <tr><td colspan="6"><details><summary class="muted">{{ e.angebote|length }} Angebote</summary>
         <table>{% for a in e.angebote[:10] %}
-          <tr><td class="num">{{ "%.2f"|format(a.preis) }} €</td><td>{{ a.shop }}</td>
+          <tr><td class="num">{{ "%.2f"|format(a.preis) }} €{% if a.rabatt_prozent %} <span class="muted">−{{ "%.0f"|format(a.rabatt_prozent) }}%</span>{% endif %}</td><td>{{ a.shop }}</td>
           <td style="white-space:normal">{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</td></tr>
         {% endfor %}</table>
       </details></td></tr>

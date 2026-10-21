@@ -25,6 +25,8 @@ _BETRAG = r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2})|,[-–])"
 _PREIS = re.compile(rf"€\s*{_BETRAG}|{_BETRAG}\s*€?")
 _KEIN_PREIS_DAVOR = re.compile(r"(versand|uvp|statt|spar|ersparnis|rabatt|cashback|gutschein|pfand|zzgl)\W*$", re.I)
 _KEIN_PREIS_DANACH = re.compile(r"^\W*(mtl|monat|/\s*m|rate|finanz)", re.I)
+_ALTPREIS_DAVOR = re.compile(r"(uvp|statt|vorher|bisher|ursprünglich)\W*$", re.I)
+_AKTION = re.compile(r"\bangebot\b|\bdeal\b|\bsale\b|reduziert|aktion|black ?friday|cyber|tagesangebot|-\s?\d{1,2}\s?%", re.I)
 _LIEFERBAR = re.compile(r"lagernd|auf lager|sofort (lieferbar|verfügbar)|versandfertig|lieferbar in", re.I)
 _NICHT_LIEFERBAR = re.compile(r"nicht (lieferbar|verfügbar)|ausverkauft|vergriffen|derzeit nicht|kein liefertermin", re.I)
 
@@ -33,19 +35,25 @@ def norm(s: str) -> str:
     return re.sub(r"[^0-9a-zäöüß]", "", s.lower())
 
 
-def preis(text: str) -> float | None:
-    werte = []
+def _betraege(text: str):
     for m in _PREIS.finditer(text):
-        davor = text[max(0, m.start() - 30):m.start()]
-        danach = text[m.end():m.end() + 12]
-        if _KEIN_PREIS_DAVOR.search(davor) or _KEIN_PREIS_DANACH.search(danach):
-            continue
         g = m.groups()
         euro, cent = (g[0], g[1]) if g[0] else (g[2], g[3])
         wert = int(euro.replace(".", "")) + int(cent or 0) / 100
         if wert >= 1:
-            werte.append(wert)
+            yield wert, text[max(0, m.start() - 30):m.start()], text[m.end():m.end() + 12]
+
+
+def preis(text: str) -> float | None:
+    werte = [w for w, davor, danach in _betraege(text)
+             if not _KEIN_PREIS_DAVOR.search(davor) and not _KEIN_PREIS_DANACH.search(danach)]
     return min(werte) if werte else None
+
+
+def alter_preis(text: str) -> float | None:
+    """Streichpreis / UVP, falls angezeigt."""
+    werte = [w for w, davor, _ in _betraege(text) if _ALTPREIS_DAVOR.search(davor)]
+    return max(werte) if werte else None
 
 
 def name(text: str) -> str:
@@ -60,8 +68,12 @@ def parse_produkt(card: dict, shop: str) -> ProduktAngebot | None:
     if p is None:
         return None
     lieferbar = False if _NICHT_LIEFERBAR.search(text) else (True if _LIEFERBAR.search(text) else None)
+    alt = alter_preis(text)
+    if alt is not None and alt <= p:
+        alt = None
     return ProduktAngebot(name=name(text), preis=p, shop=shop, url=card.get("href", ""),
-                          lieferbar=lieferbar, rohtext=text[:1500])
+                          lieferbar=lieferbar, alter_preis=alt,
+                          aktion=bool(alt or _AKTION.search(text)), rohtext=text[:1500])
 
 
 def passt(angebot: ProduktAngebot, artikel: dict) -> bool:

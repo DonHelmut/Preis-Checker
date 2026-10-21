@@ -26,22 +26,34 @@ def text_fuer(ergebnis: dict) -> str:
 
 
 def produkt_melden(cfg: dict, ergebnis: dict, vorher: dict | None) -> bool:
-    """Melden, wenn Zielpreis erstmals erreicht oder neuer Tiefstpreis darunter."""
-    if not ergebnis.get("ziel_erreicht"):
+    """Melden bei Zielpreis/Schnäppchen – erneut nur, wenn der Preis weiter fällt."""
+    if not (ergebnis.get("ziel_erreicht") or ergebnis.get("schnaeppchen")):
         return False
-    alt = (vorher or {}).get("bester_preis")
-    return not (vorher or {}).get("ziel_erreicht") or alt is None or ergebnis["bester_preis"] < alt
+    vorher = vorher or {}
+    schon_gemeldet = vorher.get("ziel_erreicht") or vorher.get("schnaeppchen")
+    alt = vorher.get("bester_preis")
+    return not schon_gemeldet or alt is None or ergebnis["bester_preis"] < alt
+
+
+def produkt_text(ergebnis: dict) -> str:
+    best = ergebnis["angebote"][0]
+    kopf = "Schnäppchen" if ergebnis.get("schnaeppchen") else "Zielpreis erreicht"
+    zeilen = [f"{kopf}: {ergebnis['suche']}", f"{best['preis']:.2f} € bei {best['shop']}"]
+    if ergebnis.get("zielpreis"):
+        zeilen[-1] += f" (Ziel {ergebnis['zielpreis']:.2f} €)"
+    zeilen += ergebnis.get("gruende") or []
+    zeilen += [best["name"], best["url"]]
+    return "\n".join(z for z in zeilen if z)
 
 
 def senden_produkt(cfg: dict, ergebnis: dict, vorher: dict | None) -> None:
     if not produkt_melden(cfg, ergebnis, vorher):
         return
     best = ergebnis["angebote"][0]
-    text = (f"Zielpreis erreicht: {ergebnis['suche']}\n"
-            f"{best['preis']:.2f} € bei {best['shop']} (Ziel {ergebnis['zielpreis']:.2f} €)\n"
-            f"{best['name']}\n{best['url']}")
-    _verteilen(cfg, text, {"kategorie": "produkt", "suche": ergebnis["suche"], "preis": best["preis"],
-                           "shop": best["shop"], "url": best["url"], "name": best["name"]})
+    _verteilen(cfg, produkt_text(ergebnis), {
+        "kategorie": "produkt", "suche": ergebnis["suche"], "preis": best["preis"], "shop": best["shop"],
+        "url": best["url"], "name": best["name"], "schnaeppchen": ergebnis.get("schnaeppchen", False),
+        "ziel_erreicht": ergebnis.get("ziel_erreicht", False), "gruende": ergebnis.get("gruende") or []})
 
 
 def _verteilen(cfg: dict, text: str, payload: dict) -> None:

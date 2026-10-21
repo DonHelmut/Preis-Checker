@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from statistics import median
 
 from .models import InternetAngebot, ProduktAngebot, StromAngebot
 
@@ -64,7 +65,8 @@ def internet(cfg: dict, angebote: list[InternetAngebot]) -> dict:
     }
 
 
-def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot]) -> dict:
+def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: list[float] | None = None) -> dict:
+    """verlauf = bisherige Bestpreise (für Schnäppchen-Erkennung)."""
     from .sources.shops import passt
     nur_lieferbar = cfg["produkte"].get("nur_lieferbar", True)
     beste: dict[tuple, dict] = {}
@@ -78,12 +80,29 @@ def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot]) -> dict:
             beste[key] = row
     rows = sorted(beste.values(), key=lambda r: r["preis"])
     ziel = artikel.get("zielpreis")
+    bester = rows[0]["preis"] if rows else None
+    p = cfg["produkte"]
+    gruende = []
+    schnitt = round(median(verlauf), 2) if verlauf and len(verlauf) >= 4 else None
+    if bester and schnitt and bester <= schnitt * (1 - p.get("schnaeppchen_prozent", 15) / 100):
+        gruende.append(f"{(1 - bester / schnitt) * 100:.0f}% unter Ø {schnitt:.2f} €")
+    andere = [r["preis"] for r in rows if r["shop"] != (rows[0]["shop"] if rows else None)]
+    markt = round(median(andere), 2) if len(andere) >= 2 else None
+    if bester and markt and bester <= markt * (1 - p.get("markt_prozent", 25) / 100):
+        gruende.append(f"{(1 - bester / markt) * 100:.0f}% unter anderen Shops (Median {markt:.2f} €)")
+    if rows and (rows[0].get("rabatt_prozent") or 0) >= p.get("schnaeppchen_prozent", 15):
+        gruende.append(f"Shop-Aktion −{rows[0]['rabatt_prozent']:.0f}% (statt {rows[0]['alter_preis']:.2f} €)")
     return {
         "kategorie": f"produkt:{artikel['suche']}",
         "suche": artikel["suche"],
         "zielpreis": ziel,
         "aktuell": {"kosten_jahr": None},
         "angebote": rows,
-        "bester_preis": rows[0]["preis"] if rows else None,
-        "ziel_erreicht": bool(rows and ziel and rows[0]["preis"] <= ziel),
+        "bester_preis": bester,
+        "bester_shop": rows[0]["shop"] if rows else None,
+        "durchschnitt": schnitt,
+        "markt_median": markt,
+        "ziel_erreicht": bool(rows and ziel and bester <= ziel),
+        "schnaeppchen": bool(gruende),
+        "gruende": gruende,
     }

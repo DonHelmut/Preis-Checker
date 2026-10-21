@@ -78,7 +78,12 @@ class ProduktAngebot:
     shop: str
     url: str = ""
     lieferbar: bool | None = None  # None = unbekannt
+    alter_preis: float | None = None  # Streichpreis/UVP
+    aktion: bool = False              # Shop kennzeichnet Angebot/Deal
     rohtext: str = field(default="", repr=False)
 
     def to_dict(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d["rabatt_prozent"] = (round((self.alter_preis - self.preis) / self.alter_preis * 100, 1)
+                               if self.alter_preis else None)
+        return d
