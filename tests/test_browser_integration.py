@@ -7,10 +7,26 @@ import yaml
 from preischecker import db, runner
 from preischecker.config import load_config
 
-pytestmark = pytest.mark.skipif(not os.environ.get("PREISCHECKER_CHROMIUM"), reason="kein Chromium konfiguriert")
+pytestmark = pytest.mark.skipif(not (os.environ.get("PREISCHECKER_CHROMIUM") or os.environ.get("PREISCHECKER_BROWSERTEST")),
+                                reason="Browsertest nur mit PREISCHECKER_BROWSERTEST=1 oder PREISCHECKER_CHROMIUM")
 
 SEITE = """<html><body><div class="liste">{karten}</div></body></html>"""
 KARTE = '<a href="/p/{i}"><div>{name}</div><span>{preis} €</span><span>Auf Lager</span></a>'
+
+
+def test_schutzseite_wird_erkannt(tmp_path):
+    from preischecker.sources import browser, shops
+    (tmp_path / "cf.html").write_text("<html><head><title>Nur einen Moment…</title></head><body>…</body></html>")
+    cfg = {"browser": {"timeout_sekunden": 5}, "produkte": {}}
+    with browser.browser_page(cfg) as page:
+        import preischecker.sources.browser as b
+        orig = b.schutzseite_abwarten
+        b.schutzseite_abwarten = lambda page, sekunden=20: orig(page, 2)
+        try:
+            with pytest.raises(shops.BlockiertError):
+                shops.suchen(page, "x", f"file://{tmp_path}/cf.html?{{q}}", "test", cfg)
+        finally:
+            b.schutzseite_abwarten = orig
 
 
 def test_parallele_prozesse_ohne_vermischung(tmp_path, monkeypatch):

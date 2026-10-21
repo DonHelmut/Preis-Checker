@@ -34,7 +34,7 @@ def test_parallel_sammeln_und_verlauf(tmp_path, monkeypatch):
     ergebnisse = runner.pruefen(cfg, ["produkte"])
     e = {x["suche"]: x for x in ergebnisse}
     assert e["Switch 2"]["bester_preis"] == 449.0 and e["RX 9070 XT"]["bester_preis"] == 449.0
-    assert "Saturn: TimeoutError" in e["RX 9070 XT"]["fehler"]
+    assert "Saturn: Zeitüberschreitung" in e["RX 9070 XT"]["fehler"]
     verlauf = db.preisverlauf("RX 9070 XT")
     assert {r["shop"] for r in verlauf} == {"geizhals", "mediamarkt"}
     status = db.shop_status_alle()
