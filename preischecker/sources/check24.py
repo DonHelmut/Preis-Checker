@@ -27,14 +27,14 @@ def _strom_cards(page, cfg: dict) -> list[dict]:
     timeout = cfg["browser"].get("timeout_sekunden", 60)
 
     # 1. Versuch: Ergebnisseite direkt per URL-Parametern
-    page.goto(f"{STROM_ERGEBNIS}?{urlencode({'zipcode': ort['plz'], 'totalconsumption': kwh})}")
+    page.goto(f"{STROM_ERGEBNIS}?{urlencode({'zipcode': ort['plz'], 'totalconsumption': kwh})}", wait_until="domcontentloaded")
     b.accept_cookies(page)
     cards = b.wait_for_cards(page, r"kWh|Arbeitspreis", timeout_s=min(timeout, 25))
     if len(cards) >= 3:
         return cards
 
     # 2. Versuch: Formular ausfüllen
-    page.goto(STROM_START)
+    page.goto(STROM_START, wait_until="domcontentloaded")
     b.accept_cookies(page)
     if b.fill_first(page, ["postleitzahl", "plz", "zipcode"], str(ort["plz"])):
         b.pick_autocomplete(page)
@@ -46,7 +46,7 @@ def _strom_cards(page, cfg: dict) -> list[dict]:
 def _dsl_cards(page, cfg: dict) -> list[dict]:
     ort = cfg["standort"]
     timeout = cfg["browser"].get("timeout_sekunden", 60)
-    page.goto(DSL_START)
+    page.goto(DSL_START, wait_until="domcontentloaded")
     b.accept_cookies(page)
     if b.fill_first(page, ["postleitzahl", "plz", "zipcode"], str(ort["plz"])):
         b.pick_autocomplete(page)

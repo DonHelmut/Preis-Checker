@@ -32,7 +32,7 @@ def test_speichern(tmp_path, monkeypatch):
     form = MultiDict([
         ("standort.plz", "12345"), ("strom.aktiv", "on"), ("strom.verbrauch_kwh", "2.500"),
         ("strom.arbeitspreis_ct", "29,9"), ("strom.vertragsende", "2027-03-31"),
-        ("benachrichtigung.telegram_bot_token", ""), ("quelle_geizhals", "on"),
+        ("benachrichtigung.telegram_bot_token", ""), ("quellen_feld", "1"), ("quelle_geizhals", "on"),
         ("p_suche", "Switch 2"), ("p_zielpreis", "429,99"), ("p_min_preis", ""), ("p_max_preis", ""),
         ("p_darf_nicht_enthalten", "hülle, tasche"),
         ("p_suche", "RX 9070 XT"), ("p_zielpreis", ""), ("p_min_preis", "450"), ("p_max_preis", ""),
@@ -94,7 +94,7 @@ def test_schnellsuche_und_beobachten(tmp_path, monkeypatch):
     from preischecker.models import ProduktAngebot
     from preischecker import compare
 
-    def fake(cfg, artikel):
+    def fake(cfg, artikel, fortschritt=None):
         return compare.produkt(cfg, artikel, [ProduktAngebot("Dyson V15 Detect", 499.0, "geizhals", "https://g/1"),
                                               ProduktAngebot("Dyson V15 Akku", 89.0, "alternate")]) | {"fehler": None}
     monkeypatch.setattr(runner, "schnellsuche", fake)
@@ -107,7 +107,7 @@ def test_schnellsuche_und_beobachten(tmp_path, monkeypatch):
         if "läuft" not in html:
             break
         time.sleep(0.05)
-    assert "499.00 €" in html and "https://g/1" in html and "Akku" not in html   # min_preis filtert Zubehör
+    assert "499,00 €" in html and "https://g/1" in html and "Akku" not in html   # min_preis filtert Zubehör
     app.post("/beobachten", data={"q": "Dyson V15", "min_preis": "200", "zielpreis": "450"})
     cfg = load_raw(path)
     assert cfg["produkte"]["aktiv"] is True

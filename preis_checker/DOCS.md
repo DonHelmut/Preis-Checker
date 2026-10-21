@@ -5,6 +5,12 @@
 2. Oben **Einstellungen**: Adresse, Strom-/Internetvertrag, Produkte eintragen → Speichern.
 3. **Übersicht → Jetzt prüfen**. Danach automatisch alle 6 Stunden (einstellbar).
 
+## Preisverlauf & Statistik
+Jeder Shop-Preis wird bei jeder Prüfung gespeichert. Auf der Detailseite eines Artikels: Diagramm (7/30/90 Tage/alles, Shops ein-/ausblendbar), Tiefstpreis, Ø 30 Tage, Schwankung, Trend und eine Einschätzung („Tiefstpreis“, „Guter Preis“, „Eher teuer“, „Abwarten“).
+
+## Shops
+Preisvergleiche (Geizhals, idealo) werden immer abgefragt. Je nach Kategorie des Artikels zusätzlich Elektronikmärkte (MediaMarkt, Saturn, Amazon, Otto, Cyberport, notebooksbilliger, Galaxus, expert, Euronics, Kaufland, Conrad) oder PC-Hardware (Alternate, Mindfactory, Caseking, Proshop …). Ein-/ausschalten unter Einstellungen → Shops. Der Status jedes Shops steht unten auf der Übersicht.
+
 ## Schnellsuche
 Übersicht → Suchbegriff eingeben → nach ca. 30–60 s Preise aller Shops. „Beobachten + Preisalarm“ übernimmt den Artikel in die Liste.
 

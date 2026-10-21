@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_makros.html" import icon, delta, empfehlung_icon %}
+{% block titel %}{{ d.artikel.suche }} · Preis-Checker{% endblock %}
+{% block inhalt %}{% set k = d.k %}{% set best = d.best %}
+<a class="zurueck" href="{{ url_for('index') }}">{{ icon("pfeil-links", "s") }} Übersicht</a>
+
+<div class="titel">
+  <div>
+    <h1>{{ d.artikel.suche }}</h1>
+    <div class="meta">
+      <span class="chip">{{ icon("laden", "s") }} {{ d.kategorie }} · {{ d.shops_gesamt }} Shops</span>
+      {% if k.messungen %}<span class="chip">{{ icon("uhr", "s") }} {{ k.messungen }} Messungen seit {{ k.seit|datum }}</span>{% endif %}
+      {% if d.artikel.zielpreis %}<span class="chip akzent">{{ icon("glocke", "s") }} Alarm bei {{ d.artikel.zielpreis|eur }}</span>{% endif %}
+    </div>
+  </div>
+  {% if best and best.url %}<a class="btn" href="{{ best.url }}" target="_blank" rel="noopener">{{ icon("extern") }} Günstigstes Angebot</a>{% endif %}
+</div>
+
+<div class="card banner {{ k.empfehlung.stufe if k.empfehlung.stufe in ('gut', 'warnung', 'teuer') else 'neutral' }}" style="margin-top:20px">
+  <div class="ico">{{ empfehlung_icon(k.empfehlung.stufe) }}</div>
+  <div><b>{{ k.empfehlung.text }}</b><span class="ink2">{{ k.empfehlung.detail }}</span>
+    {% if d.letzte.gruende %}<div class="klein" style="margin-top:4px;color:var(--good-ink)">{{ icon("blitz", "s") }} {{ d.letzte.gruende|join(" · ") }}</div>{% endif %}
+  </div>
+</div>
+
+<div class="kpis" style="margin-top:20px">
+  <div class="card kpi"><div class="label">Aktuell günstigster</div>
+    <div class="wert">{{ best.preis|eur if best else "–" }}</div>
+    <div class="unter">{% if best %}{{ shop_name(best.shop) }} · {{ delta(k.aenderung, k.aenderung_prozent) }}{% else %}noch keine Daten{% endif %}</div></div>
+  <div class="card kpi"><div class="label">Tiefstpreis</div><div class="wert" style="color:var(--good-ink)">{{ k.tiefst|eur }}</div>
+    <div class="unter">{% if k.tiefst_zeit %}{{ k.tiefst_zeit|datum }} · {{ shop_name(k.tiefst_shop) }}{% endif %}</div></div>
+  <div class="card kpi"><div class="label">Ø 30 Tage</div><div class="wert">{{ k.schnitt30|eur }}</div>
+    <div class="unter">aktuell {{ k.gegen_schnitt_prozent|prozent }} · Höchst {{ k.hoechst|eur }}</div></div>
+  <div class="card kpi"><div class="label">Schwankung</div><div class="wert">{{ (k.schwankung_stufe or "–")|capitalize }}</div>
+    <div class="unter">σ {{ k.schwankung_prozent|prozent(false) }} · Spanne {{ k.spanne_prozent|prozent(false) }}</div></div>
+  <div class="card kpi"><div class="label">Trend 7 Tage</div>
+    <div class="wert">{% if k.trend_prozent is none %}–{% elif k.trend_prozent < -0.5 %}<span style="color:var(--good-ink)">fallend</span>{% elif k.trend_prozent > 0.5 %}<span style="color:var(--critical-ink)">steigend</span>{% else %}stabil{% endif %}</div>
+    <div class="unter">{{ k.trend_prozent|prozent }} gegenüber den 3 Wochen davor</div></div>
+</div>
+
+<div class="card" style="margin-top:20px">
+  <div class="card-head"><h2>Preisverlauf</h2><span class="muted klein">Stufenlinie: Preis gilt bis zur nächsten Messung</span></div>
+  <div class="filterzeile">
+    <div class="segment" id="zeitraum" role="group" aria-label="Zeitraum">
+      <button type="button" data-tage="7">7 T</button><button type="button" data-tage="30">30 T</button>
+      <button type="button" data-tage="90">90 T</button><button type="button" data-tage="0">Alles</button>
+    </div>
+    <div class="legende" id="legende" aria-label="Linien ein-/ausblenden"></div>
+  </div>
+  <div class="chart" data-chart data-quelle="chart-daten" data-legende="#legende" data-segment="#zeitraum" data-tage="30">
+    <div class="flaeche"></div>
+    <div class="tooltip" role="status"></div>
+  </div>
+  <script type="application/json" id="chart-daten">{{ d.chart|tojson }}</script>
+</div>
+
+<div class="zweispaltig" style="margin-top:20px">
+  <div class="card">
+    <div class="card-head"><h2>Shop-Vergleich</h2><span class="muted klein">günstigstes passendes Angebot je Shop</span></div>
+    {% if d.vergleich %}
+    <div class="tabelle"><table class="sortierbar">
+      <thead><tr><th data-sort>Shop</th><th data-sort class="num">Preis</th><th data-sort class="num">Änderung</th><th data-sort class="num">Shop-Tiefst</th><th>Produkt</th></tr></thead>
+      <tbody>
+      {% for v in d.vergleich %}
+        <tr class="{{ 'bester' if loop.first and v.aktuell }}">
+          <td data-wert="{{ v.shop_name }}"><b>{{ v.shop_name }}</b>{% if v.aktion %} <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}
+            {% if not v.aktuell %}<div class="muted klein">zuletzt {{ v.zeit|zeit_rel }}</div>{% endif %}</td>
+          <td class="num" data-wert="{{ v.preis }}"><b>{{ v.preis|eur }}</b></td>
+          <td class="num" data-wert="{{ v.aenderung or 0 }}">{{ delta(v.aenderung) }}</td>
+          <td class="num" data-wert="{{ v.tiefst }}">{{ v.tiefst|eur }}</td>
+          <td class="name klein">{% if v.url %}<a href="{{ v.url }}" target="_blank" rel="noopener">{{ v.name }} {{ icon("extern", "s") }}</a>{% else %}{{ v.name }}{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<div class="card-pad muted">Noch keine Preise gespeichert.</div>{% endif %}
+    {% if d.letzte.fehler %}<div class="card-pad klein muted" style="border-top:1px solid var(--border)">{{ icon("info", "s") }} {{ d.letzte.fehler }}</div>{% endif %}
+  </div>
+
+  <div class="card card-pad">
+    <h2 style="margin-bottom:14px">Beobachtung</h2>
+    <form method="post" action="{{ url_for('produkt_ziel', s=d.slug) }}">
+      <div class="formzeile"><label for="z">Zielpreis (Alarm)</label>
+        <input id="z" type="text" inputmode="decimal" name="zielpreis" value="{{ anzeigen(d.artikel.zielpreis, 'float') }}" placeholder="optional"></div>
+      <div class="formzeile"><label for="m">Mindestpreis (filtert Zubehör)</label>
+        <input id="m" type="text" inputmode="decimal" name="min_preis" value="{{ anzeigen(d.artikel.min_preis, 'float') }}" placeholder="optional"></div>
+      <div class="formzeile"><label for="kat">Shops</label>
+        <select id="kat" name="kategorie">{% for key, name in KATEGORIEN.items() %}<option value="{{ key }}" {% if (d.artikel.kategorie or 'alle') == key %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></div>
+      <button class="btn" style="width:100%">Speichern</button>
+    </form>
+    <form method="post" action="{{ url_for('produkt_entfernen', s=d.slug) }}" onsubmit="return confirm('Artikel nicht mehr beobachten? Der Verlauf bleibt gespeichert.')" style="margin-top:10px">
+      <button class="btn danger" style="width:100%">{{ icon("trash", "s") }} Nicht mehr beobachten</button>
+    </form>
+  </div>
+</div>
+
+{% if d.reihe %}
+<details class="card" style="margin-top:20px">
+  <summary class="card-pad" style="cursor:pointer"><b>Alle Messungen als Tabelle</b> <span class="muted klein">({{ d.reihe|length }})</span></summary>
+  <div class="tabelle"><table>
+    <thead><tr><th>Zeitpunkt</th><th class="num">Bestpreis</th><th>Shop</th></tr></thead>
+    <tbody>{% for p in d.reihe|reverse %}<tr><td>{{ p.zeit|datum }}</td><td class="num">{{ p.preis|eur }}</td><td>{{ shop_name(p.shop) }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</details>
+{% endif %}
+{% endblock %}

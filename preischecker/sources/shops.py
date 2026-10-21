@@ -1,25 +1,60 @@
-"""Produktsuche in deutschen Shops / Preisvergleichen.
+"""Produktsuche in deutschen Shops und Preisvergleichen.
 
-Geizhals listet fast alle deutschen Händler, Alternate und Mindfactory
-werden zusätzlich direkt durchsucht. Weitere Shops per Config:
-produkte.eigene_shops: {name: "https://shop.de/suche?q={q}"}
+Jeder Shop wird wie von Hand im Browser durchsucht, die Ergebnis-Kacheln
+werden per Text-Heuristik ausgelesen (keine shop-spezifischen CSS-Klassen).
+Weitere Shops per Config: produkte.eigene_shops: {name: "https://shop.de/suche?q={q}"}
 """
 from __future__ import annotations
 
 import logging
 import re
-from urllib.parse import quote_plus
+from dataclasses import dataclass
+from urllib.parse import quote, quote_plus
 
 from ..models import ProduktAngebot
 from . import browser as b
 
 log = logging.getLogger(__name__)
 
-SHOPS = {
-    "geizhals": "https://geizhals.de/?fs={q}&hloc=de",
-    "alternate": "https://www.alternate.de/listing.xhtml?q={q}",
-    "mindfactory": "https://www.mindfactory.de/search_result.php?search_query={q}",
+
+@dataclass(frozen=True)
+class Shop:
+    key: str
+    name: str
+    url: str           # {q} = Suchbegriff (Query-kodiert), {p} = Pfad-kodiert
+    gruppen: tuple[str, ...]
+
+
+SHOP_LISTE = [
+    Shop("geizhals", "Geizhals", "https://geizhals.de/?fs={q}&hloc=de", ("vergleich",)),
+    Shop("idealo", "idealo", "https://www.idealo.de/preisvergleich/MainSearchProductCategory.html?q={q}", ("vergleich",)),
+    Shop("mediamarkt", "MediaMarkt", "https://www.mediamarkt.de/de/search.html?query={q}", ("elektronik",)),
+    Shop("saturn", "Saturn", "https://www.saturn.de/de/search.html?query={q}", ("elektronik",)),
+    Shop("amazon", "Amazon", "https://www.amazon.de/s?k={q}", ("elektronik", "hardware", "allgemein")),
+    Shop("otto", "Otto", "https://www.otto.de/suche/{p}/", ("elektronik", "allgemein")),
+    Shop("cyberport", "Cyberport", "https://www.cyberport.de/tools/search-results.html?q={q}", ("elektronik", "hardware")),
+    Shop("notebooksbilliger", "notebooksbilliger", "https://www.notebooksbilliger.de/produkte/{p}", ("elektronik", "hardware")),
+    Shop("galaxus", "Galaxus", "https://www.galaxus.de/de/search?q={q}", ("elektronik", "hardware", "allgemein")),
+    Shop("expert", "expert", "https://www.expert.de/suche?q={q}", ("elektronik",)),
+    Shop("euronics", "Euronics", "https://www.euronics.de/search?sSearch={q}", ("elektronik",)),
+    Shop("kaufland", "Kaufland", "https://www.kaufland.de/s/?search_value={q}", ("elektronik", "allgemein")),
+    Shop("conrad", "Conrad", "https://www.conrad.de/de/search.html?search={q}", ("elektronik", "hardware")),
+    Shop("alternate", "Alternate", "https://www.alternate.de/listing.xhtml?q={q}", ("hardware", "elektronik")),
+    Shop("mindfactory", "Mindfactory", "https://www.mindfactory.de/search_result.php?search_query={q}", ("hardware",)),
+    Shop("caseking", "Caseking", "https://www.caseking.de/search?search={q}", ("hardware",)),
+    Shop("proshop", "Proshop", "https://www.proshop.de/?s={q}", ("hardware",)),
+]
+SHOPS = {s.key: s for s in SHOP_LISTE}
+
+KATEGORIEN = {
+    "alle": "Alle Shops",
+    "elektronik": "Elektronik (MediaMarkt, Saturn, Amazon …)",
+    "hardware": "PC-Hardware (Alternate, Mindfactory, Caseking …)",
+    "allgemein": "Allgemein (Amazon, Otto, Kaufland …)",
 }
+GRUPPEN_NAMEN = {"vergleich": "Preisvergleiche", "elektronik": "Elektronikmärkte",
+                 "hardware": "PC-Hardware", "allgemein": "Kaufhäuser"}
+STANDARD_AUS = {"conrad", "proshop"}  # standardmäßig aus, per Einstellung zuschaltbar
 
 _BETRAG = r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2})|,[-–])"
 _PREIS = re.compile(rf"€\s*{_BETRAG}|{_BETRAG}\s*€?")
@@ -76,13 +111,34 @@ def parse_produkt(card: dict, shop: str) -> ProduktAngebot | None:
                           aktion=bool(alt or _AKTION.search(text)), rohtext=text[:1500])
 
 
+def _token_passt(token: str, name_klein: str, name_norm: str) -> bool:
+    t = norm(token)
+    if not t:
+        return True
+    if t.isdigit():  # Zahlen wortgenau: "2" passt nicht auf "V2" oder "2022"
+        return re.search(rf"(?<![0-9a-zäöüß]){t}(?![0-9])", name_klein) is not None
+    return t in name_norm
+
+
+def enthaelt_suche(name_: str, woerter: list[str]) -> bool:
+    name_klein = name_.lower()
+    name_norm = norm(name_)
+    phrase = norm("".join(woerter))
+    if phrase and phrase in name_norm and not phrase.isdigit():
+        # "RX 9070 XT" passt auf "RX9070XT"; Zahl am Ende darf nicht weiterlaufen ("Switch 2" ≠ "Switch 2022")
+        idx = name_norm.index(phrase) + len(phrase)
+        if not (phrase[-1].isdigit() and idx < len(name_norm) and name_norm[idx].isdigit()):
+            return True
+    return all(_token_passt(w, name_klein, name_norm) for w in woerter)
+
+
 def passt(angebot: ProduktAngebot, artikel: dict) -> bool:
     """Relevanzfilter gegen Zubehör & Fehltreffer."""
-    n = norm(angebot.name)
     woerter = artikel.get("muss_enthalten") or artikel["suche"].split()
-    if not all(norm(w) in n for w in woerter):
+    if not enthaelt_suche(angebot.name, woerter):
         return False
-    if any(norm(w) in n for w in artikel.get("darf_nicht_enthalten", [])):
+    n = norm(angebot.name)
+    if any(norm(w) and norm(w) in n for w in artikel.get("darf_nicht_enthalten", [])):
         return False
     if artikel.get("min_preis") and angebot.preis < artikel["min_preis"]:
         return False
@@ -92,7 +148,8 @@ def passt(angebot: ProduktAngebot, artikel: dict) -> bool:
 
 
 def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool = False) -> list[ProduktAngebot]:
-    page.goto(url_vorlage.format(q=quote_plus(suche)))
+    url = url_vorlage.replace("{p}", quote(suche)).replace("{q}", quote_plus(suche))
+    page.goto(url, wait_until="domcontentloaded")
     b.accept_cookies(page)
     cards = b.wait_for_cards(page, r"€|,[-–]", timeout_s=min(cfg["browser"].get("timeout_sekunden", 60), 30),
                              min_len=25, min_cards=2)
@@ -103,8 +160,29 @@ def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool
     return angebote
 
 
-def alle_shops(cfg: dict) -> dict[str, str]:
+def aktive_shops(cfg: dict) -> dict[str, str]:
+    """Alle eingeschalteten Shops: key -> URL-Vorlage."""
     p = cfg["produkte"]
-    shops = {k: v for k, v in SHOPS.items() if k in p.get("quellen", list(SHOPS))}
+    gewaehlt = p.get("quellen") or [k for k in SHOPS if k not in STANDARD_AUS]
+    shops = {k: SHOPS[k].url for k in gewaehlt if k in SHOPS}
     shops.update(p.get("eigene_shops") or {})
     return shops
+
+
+def shops_fuer(cfg: dict, artikel: dict) -> dict[str, str]:
+    """Shops für einen Artikel je nach Kategorie (Preisvergleiche + eigene Shops immer)."""
+    kat = artikel.get("kategorie") or "alle"
+    out = {}
+    for k, url in aktive_shops(cfg).items():
+        shop = SHOPS.get(k)
+        if kat == "alle" or shop is None or "vergleich" in shop.gruppen or kat in shop.gruppen:
+            out[k] = url
+    return out
+
+
+def shop_name(key: str) -> str:
+    return SHOPS[key].name if key in SHOPS else key
+
+
+def alle_shops(cfg: dict) -> dict[str, str]:  # Kompatibilität
+    return aktive_shops(cfg)

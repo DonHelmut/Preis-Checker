@@ -1,83 +1,91 @@
 {% extends "base.html" %}
-{% set seite = "einstellungen" %}
+{% from "_makros.html" import icon %}
+{% block titel %}Einstellungen · Preis-Checker{% endblock %}
 {% block inhalt %}
-{% if gespeichert %}<p class="ok">Gespeichert. Gilt ab der nächsten Prüfung.</p>{% endif %}
-{% if test %}<p class="ok">Testnachricht gesendet – falls nichts ankommt, Werte prüfen.</p>{% endif %}
-{% for f in fehler %}<p class="err">{{ f }}</p>{% endfor %}
+<h1 style="margin-bottom:20px">Einstellungen</h1>
+{% if gespeichert %}<div class="meldung ok">{{ icon("check") }} Gespeichert. Gilt ab der nächsten Prüfung.</div>{% endif %}
+{% if test %}<div class="meldung ok">{{ icon("glocke") }} Testnachricht gesendet – falls nichts ankommt, Auswahl prüfen.</div>{% endif %}
+{% for f in fehler %}<div class="meldung fehler">{{ icon("warn") }} {{ f }}</div>{% endfor %}
 
-<form method="post" action="{{ url_for('einstellungen_speichern') }}">
-{% for titel, hinweis, felder in abschnitte %}
-<section>
-  <h2>{{ titel }}</h2>
-  {% if hinweis %}<p class="muted">{{ hinweis }}</p>{% endif %}
-  {% for pfad, label, typ, tipp in felder %}{% set wert = get(cfg, pfad) %}
-  <label class="feld">
-    <span>{{ label }}</span>
-    {% if typ == "bool" %}
-      <input type="checkbox" name="{{ pfad }}" {% if wert %}checked{% endif %}>
-    {% elif typ in ("int", "float") %}
-      <input type="text" inputmode="decimal" name="{{ pfad }}" value="{{ anzeigen(wert, typ) }}">
-    {% elif typ == "date" %}
-      <input type="date" name="{{ pfad }}" value="{{ wert or '' }}">
-    {% elif typ == "password" %}
-      <input type="password" name="{{ pfad }}" value="" placeholder="{{ '•••••• (gespeichert)' if wert else '' }}" autocomplete="off">
-    {% else %}
-      <input type="text" name="{{ pfad }}" value="{{ wert or '' }}">
-    {% endif %}
-    {% if tipp %}<small>{{ tipp }}</small>{% endif %}
-  </label>
-  {% endfor %}
-  {% if titel == "Benachrichtigung" and ha_dienste %}
-  <input type="hidden" name="ha_dienste_feld" value="1">
-  {% set gewaehlt = gewaehlte_dienste %}
-  <div class="feld" style="display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:4px 12px;padding:6px 0">
-    <span>Benachrichtigen an</span>
-    <span>{% for dienst, name in ha_dienste %}
-      <label style="display:block;padding:3px 0"><input type="checkbox" name="ha_dienste" value="{{ dienst }}" {% if dienst in gewaehlt %}checked{% endif %}> {{ name }}</label>
-    {% endfor %}<small class="muted">Jeder hakt sein eigenes Handy an.</small></span>
-  </div>
-  {% endif %}
-  {% if titel.startswith("Produkt") %}
-  <label class="feld"><span>Quellen</span><span>
-    {% set aktiv = get(cfg, "produkte.quellen") or quellen %}
-    {% for q in quellen %}<label style="margin-right:14px"><input type="checkbox" name="quelle_{{ q }}" {% if q in aktiv %}checked{% endif %}> {{ q }}</label>{% endfor %}
-  </span></label>
-  {% endif %}
-</section>
-{% if titel.startswith("Produkt") %}
-<section>
-  <h2>Produkte</h2>
-  <p class="muted">Alle Wörter aus „Suche“ müssen im Produktnamen stehen. Mindestpreis + Ausschlusswörter filtern Zubehör. Zielpreis optional.</p>
-  <div class="scroll"><table class="edit" id="produkte">
-    <thead><tr><th>Suche</th><th>Zielpreis €</th><th>Min €</th><th>Max €</th><th>Ausschließen (Komma)</th><th></th></tr></thead>
-    <tbody>
-    {% for a in (get(cfg, "produkte.liste") or []) + [{}] %}
+<form method="post" action="{{ url_for('einstellungen_speichern') }}" class="stack">
+
+<section class="card">
+  <div class="card-head"><h2>Produkte</h2><span class="muted klein">Alle Wörter aus „Suche“ müssen im Produktnamen stehen</span></div>
+  <div class="tabelle"><table class="edit">
+    <thead><tr><th>Suche</th><th>Shops</th><th>Ziel €</th><th>Min €</th><th>Max €</th><th>Ausschließen (Komma)</th><th></th></tr></thead>
+    <tbody id="produkte">
+    {% for a in (get(cfg, "produkte.liste") or []) %}
       <tr>
-        <td><input type="text" name="p_suche" value="{{ a.suche or '' }}" placeholder="z. B. RX 9070 XT"></td>
+        <td><input type="text" name="p_suche" value="{{ a.suche or '' }}" style="min-width:190px"></td>
+        <td><select name="p_kategorie" style="min-width:130px">{% for key, name in KATEGORIEN.items() %}<option value="{{ key }}" {% if (a.kategorie or 'alle') == key %}selected{% endif %}>{{ name.split(" (")[0] }}</option>{% endfor %}</select></td>
         <td><input type="text" inputmode="decimal" name="p_zielpreis" value="{{ anzeigen(a.zielpreis, 'float') }}" style="width:90px"></td>
         <td><input type="text" inputmode="decimal" name="p_min_preis" value="{{ anzeigen(a.min_preis, 'float') }}" style="width:80px"></td>
         <td><input type="text" inputmode="decimal" name="p_max_preis" value="{{ anzeigen(a.max_preis, 'float') }}" style="width:80px"></td>
-        <td><input type="text" name="p_darf_nicht_enthalten" value="{{ (a.darf_nicht_enthalten or [])|join(', ') }}"></td>
-        <td><button type="button" onclick="this.closest('tr').remove()" title="Entfernen" style="background:var(--muted)">✕</button></td>
+        <td><input type="text" name="p_darf_nicht_enthalten" value="{{ (a.darf_nicht_enthalten or [])|join(', ') }}" style="min-width:200px"></td>
+        <td><button type="button" class="btn ghost s" data-zeile-weg title="Entfernen">{{ icon("trash", "s") }}</button></td>
       </tr>
     {% endfor %}
     </tbody>
   </table></div>
-  <p><button type="button" onclick="neueZeile()" style="background:var(--muted)">+ Produkt</button></p>
+  <template id="produkt-zeile"><tr>
+    <td><input type="text" name="p_suche" placeholder="z. B. RX 9070 XT" style="min-width:190px"></td>
+    <td><select name="p_kategorie" style="min-width:130px">{% for key, name in KATEGORIEN.items() %}<option value="{{ key }}">{{ name.split(" (")[0] }}</option>{% endfor %}</select></td>
+    <td><input type="text" inputmode="decimal" name="p_zielpreis" style="width:90px"></td>
+    <td><input type="text" inputmode="decimal" name="p_min_preis" style="width:80px"></td>
+    <td><input type="text" inputmode="decimal" name="p_max_preis" style="width:80px"></td>
+    <td><input type="text" name="p_darf_nicht_enthalten" style="min-width:200px"></td>
+    <td><button type="button" class="btn ghost s" data-zeile-weg title="Entfernen">{{ icon("trash", "s") }}</button></td>
+  </tr></template>
+  <div class="card-pad" style="padding-top:12px"><button type="button" class="btn ghost s" data-neue-zeile="#produkte">{{ icon("plus", "s") }} Produkt hinzufügen</button></div>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>Shops</h2><span class="muted klein">Preisvergleiche werden immer abgefragt, die übrigen je nach Kategorie</span></div>
+  <div class="card-pad">
+    <input type="hidden" name="quellen_feld" value="1">
+    <div class="shopwahl">
+    {% for gruppe, liste in shop_gruppen.items() %}
+      <h3>{{ gruppe }}</h3>
+      {% for s in liste %}<label class="check"><input type="checkbox" name="quelle_{{ s.key }}" {% if s.key in aktive_quellen %}checked{% endif %}> {{ s.name }}</label>{% endfor %}
+    {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if ha_dienste %}
+<section class="card">
+  <div class="card-head"><h2>{{ icon("glocke") }} Benachrichtigen an</h2><span class="muted klein">Jeder hakt sein eigenes Handy an</span></div>
+  <div class="card-pad">
+    <input type="hidden" name="ha_dienste_feld" value="1">
+    <div class="shopwahl">{% for dienst, name in ha_dienste %}
+      <label class="check"><input type="checkbox" name="ha_dienste" value="{{ dienst }}" {% if dienst in gewaehlte_dienste %}checked{% endif %}> {{ name }}</label>
+    {% endfor %}</div>
+  </div>
 </section>
 {% endif %}
+
+{% for titel, hinweis, felder in abschnitte %}
+<section class="card">
+  <div class="card-head"><h2>{{ titel }}</h2>{% if hinweis %}<span class="muted klein">{{ hinweis }}</span>{% endif %}</div>
+  <div class="card-pad" style="padding-top:6px;padding-bottom:6px">
+  {% for pfad, label, typ, tipp in felder %}{% set wert = get(cfg, pfad) %}
+    <label class="feld">
+      <span>{{ label }}</span>
+      {% if typ == "bool" %}<input type="checkbox" name="{{ pfad }}" {% if wert %}checked{% endif %}>
+      {% elif typ in ("int", "float") %}<input type="text" inputmode="decimal" name="{{ pfad }}" value="{{ anzeigen(wert, typ) }}">
+      {% elif typ == "date" %}<input type="date" name="{{ pfad }}" value="{{ wert or '' }}">
+      {% elif typ == "password" %}<input type="password" name="{{ pfad }}" value="" placeholder="{{ '•••••• (gespeichert)' if wert else '' }}" autocomplete="off">
+      {% else %}<input type="text" name="{{ pfad }}" value="{{ wert or '' }}">{% endif %}
+      {% if tipp %}<small>{{ tipp }}</small>{% endif %}
+    </label>
+  {% endfor %}
+  </div>
+</section>
 {% endfor %}
-<p style="display:flex;gap:10px;flex-wrap:wrap">
-  <button>Speichern</button>
-  <button formaction="{{ url_for('test_benachrichtigung') }}" style="background:var(--muted)">Speichern + Testnachricht</button>
-</p>
+
+<div class="sticky-aktionen">
+  <button class="btn">{{ icon("check") }} Speichern</button>
+  <button class="btn ghost" formaction="{{ url_for('test_benachrichtigung') }}">{{ icon("glocke") }} Speichern + Testnachricht</button>
+</div>
 </form>
-<script>
-function neueZeile() {
-  const tb = document.querySelector('#produkte tbody');
-  const tr = tb.lastElementChild.cloneNode(true);
-  tr.querySelectorAll('input').forEach(i => i.value = '');
-  tb.appendChild(tr);
-}
-</script>
 {% endblock %}

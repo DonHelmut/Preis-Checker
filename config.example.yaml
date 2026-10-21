@@ -36,7 +36,8 @@ internet:
 
 produkte:
   aktiv: true
-  quellen: [geizhals, alternate, mindfactory]   # Geizhals deckt fast alle DE-Shops ab
+  # quellen: [geizhals, idealo, mediamarkt, saturn, amazon, ...]   # leer = alle Standard-Shops
+  parallel: 3                # gleichzeitige Browser-Tabs (RAM: ca. 250 MB je Tab)
   nur_lieferbar: true
   schnaeppchen_prozent: 15   # Alarm, wenn Preis so viel % unter eigenem Ø-Verlauf (oder Shop-Rabatt so hoch)
   markt_prozent: 25          # Alarm, wenn ein Shop so viel % unter den anderen liegt (Preisfehler)
@@ -44,10 +45,12 @@ produkte:
   #   caseking: "https://www.caseking.de/search?search={q}"
   liste:
     - suche: "Nintendo Switch 2"
+      kategorie: elektronik          # alle | elektronik | hardware | allgemein
       zielpreis: 430                 # optional, ohne Zielpreis nur Schnäppchen-Alarm
       min_preis: 300                 # filtert Zubehör (Hüllen, Spiele ...)
       darf_nicht_enthalten: ["hülle", "tasche", "schutzfolie", "controller", "bundle"]
     - suche: "RX 9070 XT"
+      kategorie: hardware
       zielpreis: 600
       min_preis: 450
       # muss_enthalten: ["9070", "xt"]   # Standard: alle Wörter aus "suche"

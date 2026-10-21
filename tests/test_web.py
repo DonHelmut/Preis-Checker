@@ -14,7 +14,7 @@ def test_dashboard(tmp_path, monkeypatch):
     db.speichern(compare.strom(load_config(cfg_path), [StromAngebot("Neu", "T", 25, 10)]))
     from preischecker.web import create_app
     html = create_app(cfg_path).test_client().get("/").get_data(as_text=True)
-    assert "Neu" in html and "944.00" in html
+    assert "Neu" in html and "944,00 €" in html
 
 
 def test_dashboard_produkte(tmp_path, monkeypatch):
@@ -28,8 +28,11 @@ def test_dashboard_produkte(tmp_path, monkeypatch):
     for p in (659, 629):
         db.speichern(compare.produkt(cfg, artikel, [ProduktAngebot("Pulse RX 9070 XT", p, "alternate", "https://x/1")]))
     from preischecker.web import create_app
-    html = create_app(cfg_path).test_client().get("/").get_data(as_text=True)
-    assert "629.00 €" in html and "https://x/1" in html and "alternate" in html
+    app = create_app(cfg_path).test_client()
+    html = app.get("/").get_data(as_text=True)
+    assert "629,00 €" in html and "Alternate" in html and 'href="/produkt/rx_9070_xt"' in html
+    detail = app.get("/produkt/rx_9070_xt").get_data(as_text=True)
+    assert "https://x/1" in detail and "629,00 €" in detail
 
 
 def test_api_status_produkte(tmp_path, monkeypatch):
@@ -60,7 +63,7 @@ def test_api_anzeige(tmp_path, monkeypatch):
     from preischecker.web import create_app
     app = create_app(cfg_path).test_client()
     p = app.get("/api/status").get_json()["produkte"]["Switch 2"]
-    assert p["anzeige"] == "449,90 € bei geizhals" and p["aktion"] is True
+    assert p["anzeige"] == "449,90 € bei Geizhals" and p["aktion"] is True
     assert "Aktion" in app.get("/").get_data(as_text=True)
 
 
