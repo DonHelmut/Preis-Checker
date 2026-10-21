@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+- Ruhezeit (Standard 22:00–07:00, in den Einstellungen änderbar): keine Meldungen, weder Handy noch HA-Glocke
+- Meldungen aus der Ruhezeit werden zum Ende gesammelt verschickt (abschaltbar, dann verworfen)
+- Testnachricht geht immer sofort raus
+
 ## 1.1.1
 - Fix: Nettopreise für Geschäftskunden („zzgl. MwSt.“, z. B. Conrad) werden mit 19 % MwSt. auf den Endpreis gerechnet; stehen Netto und Brutto da, zählt Brutto
 - Neu: `/api/daten/shop-entfernen` löscht falsch gelesene Preise eines Shops und bewertet gespeicherte Ergebnisse neu

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+from datetime import time as dtime
 
 from .sources.shops import KATEGORIEN, SHOPS
 
@@ -50,6 +51,11 @@ ABSCHNITTE = [
         ("pruefung.benachrichtigen_ab_euro_jahr", "Vertrags-Meldung ab Ersparnis", "float", "€/Jahr"),
     ]),
     ("Benachrichtigung", "Leer lassen, was nicht genutzt wird", [
+        ("benachrichtigung.ruhezeit", "Ruhezeit", "bool", "Keine Meldungen – weder Handy noch HA-Glocke"),
+        ("benachrichtigung.ruhe_von", "Ruhezeit von", "time", ""),
+        ("benachrichtigung.ruhe_bis", "Ruhezeit bis", "time", ""),
+        ("benachrichtigung.ruhe_nachholen", "Danach nachholen", "bool",
+         "Meldungen aus der Ruhezeit gesammelt zum Ende der Ruhezeit senden (sonst verwerfen)"),
         ("benachrichtigung.webhook_url", "Home-Assistant-Webhook", "text", "http://<ha-ip>:8123/api/webhook/preischecker"),
         ("benachrichtigung.ntfy_topic", "ntfy-Topic", "text", ""),
         ("benachrichtigung.telegram_bot_token", "Telegram Bot-Token", "password", ""),
@@ -107,6 +113,8 @@ def uebernehmen(cfg: dict, form) -> list[str]:
                     wert = _zahl(roh, typ)
                 elif typ == "date":
                     wert = date.fromisoformat(roh).isoformat() if roh.strip() else None
+                elif typ == "time":
+                    wert = dtime.fromisoformat(roh.strip()).strftime("%H:%M") if roh.strip() else None
                 else:
                     wert = roh.strip() or None
             except ValueError:

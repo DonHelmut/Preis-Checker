@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import logging
 import urllib.request
+from datetime import datetime
+from datetime import time as dtime
 
-from . import ha
+from . import db, ha
 from .sources.shops import anbieter
 
 log = logging.getLogger(__name__)
@@ -67,7 +69,44 @@ def ha_dienste(n: dict) -> list[str]:
     return dienste
 
 
+def in_ruhezeit(n: dict, jetzt: datetime | None = None) -> bool:
+    """Ruhezeit (z. B. 22:00–07:00, auch über Mitternacht) aus den Einstellungen."""
+    if not n.get("ruhezeit") or not n.get("ruhe_von") or not n.get("ruhe_bis"):
+        return False
+    try:
+        von, bis = dtime.fromisoformat(str(n["ruhe_von"])), dtime.fromisoformat(str(n["ruhe_bis"]))
+    except ValueError:
+        return False
+    t = (jetzt or datetime.now()).time()
+    return von <= t < bis if von < bis else (t >= von or t < bis)
+
+
 def _verteilen(cfg: dict, text: str, payload: dict) -> None:
+    """In der Ruhezeit geht nichts raus (auch nicht die HA-Glocke); Meldungen werden gemerkt und danach nachgeholt."""
+    n = cfg["benachrichtigung"]
+    if not in_ruhezeit(n):
+        _laut_senden(cfg, text, payload)
+    elif n.get("ruhe_nachholen", True):
+        db.nachricht_merken(text, payload)
+
+
+def nachholen(cfg: dict) -> int:
+    """Nach der Ruhezeit gemerkte Meldungen gesammelt an alle Kanäle schicken."""
+    n = cfg["benachrichtigung"]
+    if in_ruhezeit(n):
+        return 0
+    gemerkt = db.nachrichten_abholen()
+    if not gemerkt:
+        return 0
+    if len(gemerkt) == 1:
+        text = gemerkt[0]["text"]
+    else:
+        text = f"Preis-Checker – {len(gemerkt)} Meldungen aus der Ruhezeit:\n\n" + "\n\n".join(m["text"] for m in gemerkt)
+    _laut_senden(cfg, text, {"kategorie": "nachgeholt", "anzahl": len(gemerkt)})
+    return len(gemerkt)
+
+
+def _laut_senden(cfg: dict, text: str, payload: dict) -> None:
     n = cfg["benachrichtigung"]
     try:
         if n.get("telegram_bot_token") and n.get("telegram_chat_id"):
@@ -101,4 +140,5 @@ def senden(cfg: dict, ergebnis: dict) -> None:
 
 
 def test(cfg: dict) -> None:
-    _verteilen(cfg, "Preis-Checker: Testnachricht – Benachrichtigung funktioniert.", {"kategorie": "test"})
+    """Testnachricht geht immer sofort raus, auch in der Ruhezeit."""
+    _laut_senden(cfg, "Preis-Checker: Testnachricht – Benachrichtigung funktioniert.", {"kategorie": "test"})

@@ -25,5 +25,8 @@ Werden automatisch angelegt, keine YAML nötig:
 ## Benachrichtigung
 Einstellungen → **Benachrichtigen an**: eigenes Handy anhaken (jeder für sich, mehrere möglich) → „Speichern + Testnachricht“.
 
+## Ruhezeit
+Standard 22:00–07:00: in dieser Zeit gehen keine Meldungen raus (weder Handy noch HA-Glocke). Was nachts anfällt, kommt zum Ende der Ruhezeit gesammelt. Einstellungen → Benachrichtigung.
+
 ## Probleme
 Keine Treffer? Im Add-on-Log nach „Debug:“ suchen. Screenshots/HTML liegen unter `/data/debug/` im Add-on.

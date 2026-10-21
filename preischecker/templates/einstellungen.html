@@ -74,6 +74,7 @@
       {% if typ == "bool" %}<input type="checkbox" name="{{ pfad }}" {% if wert %}checked{% endif %}>
       {% elif typ in ("int", "float") %}<input type="text" inputmode="decimal" name="{{ pfad }}" value="{{ anzeigen(wert, typ) }}">
       {% elif typ == "date" %}<input type="date" name="{{ pfad }}" value="{{ wert or '' }}">
+      {% elif typ == "time" %}<input type="time" name="{{ pfad }}" value="{{ wert or '' }}" style="max-width:140px">
       {% elif typ == "password" %}<input type="password" name="{{ pfad }}" value="" placeholder="{{ '•••••• (gespeichert)' if wert else '' }}" autocomplete="off">
       {% else %}<input type="text" name="{{ pfad }}" value="{{ wert or '' }}">{% endif %}
       {% if tipp %}<small>{{ tipp }}</small>{% endif %}
