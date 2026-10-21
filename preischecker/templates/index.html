@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preis-Checker</title>
+<style>
+:root { --bg:#f6f7f9; --card:#fff; --fg:#1b1f24; --muted:#667; --line:#e3e6ea; --good:#14804a; --bad:#b42318; --accent:#2457c5; }
+@media (prefers-color-scheme: dark) { :root { --bg:#111418; --card:#1a1e24; --fg:#e6e8eb; --muted:#9aa3ad; --line:#2a3038; --good:#3ccf7f; --bad:#ff6b5f; --accent:#7aa2ff; } }
+* { box-sizing:border-box; }
+body { margin:0; font:15px/1.45 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+main { max-width:1000px; margin:0 auto; padding:16px; }
+header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+h1 { font-size:22px; margin:8px 0; }
+section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:16px 0; }
+h2 { margin:0 0 8px; font-size:18px; }
+.kpis { display:flex; gap:24px; flex-wrap:wrap; margin:8px 0 12px; }
+.kpi b { display:block; font-size:22px; }
+.kpi span { color:var(--muted); font-size:13px; }
+.good { color:var(--good); } .bad { color:var(--bad); } .muted { color:var(--muted); }
+.scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:14px; }
+th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
+button[disabled] { opacity:.6; }
+.err { background:color-mix(in srgb, var(--bad) 12%, transparent); padding:8px 10px; border-radius:6px; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Preis-Checker</h1>
+  <form method="post" action="/pruefen">
+    <button {% if laeuft %}disabled{% endif %}>{% if laeuft %}Prüfung läuft …{% else %}Jetzt prüfen{% endif %}</button>
+  </form>
+</header>
+
+{% if not daten %}<section>Keine Kategorie aktiv. <code>config.yaml</code> prüfen.</section>{% endif %}
+
+{% for kat, d in daten.items() %}
+<section>
+  <h2>{{ "Strom" if kat == "strom" else "Internet" }}</h2>
+  {% set e = d.letzte %}
+  {% if not e %}
+    <p class="muted">Noch keine Prüfung gelaufen.</p>
+  {% else %}
+    <p class="muted">Stand: {{ e.zeit }}</p>
+    {% if e.fehler %}<p class="err">{{ e.fehler }}</p>{% endif %}
+    <div class="kpis">
+      <div class="kpi"><b>{{ "%.2f"|format(e.aktuell.kosten_jahr) }} €</b><span>aktuell/Jahr · {{ e.aktuell.anbieter }}</span></div>
+      {% if e.angebote %}
+      <div class="kpi"><b>{{ "%.2f"|format(e.angebote[0].kosten_jahr) }} €</b><span>günstigstes/Jahr · {{ e.angebote[0].anbieter }}</span></div>
+      <div class="kpi"><b class="{{ 'good' if e.beste_ersparnis_jahr > 0 else 'bad' }}">{{ "%+.2f"|format(e.beste_ersparnis_jahr) }} €</b><span>Ersparnis/Jahr</span></div>
+      {% endif %}
+      {% if e.aktuell.kuendigen_bis %}<div class="kpi"><b>{{ e.aktuell.kuendigen_bis }}</b><span>kündigen bis</span></div>{% endif %}
+    </div>
+    {% if e.angebote %}
+    <div class="scroll"><table>
+      <thead><tr><th>Anbieter</th><th>Tarif</th>
+        {% if kat == "strom" %}<th class="num">ct/kWh</th><th class="num">Grund €/M</th>{% else %}<th class="num">Mbit/s</th><th class="num">Ø €/Monat</th>{% endif %}
+        <th class="num">Bonus</th><th class="num">€/Jahr</th><th class="num">Ersparnis</th></tr></thead>
+      <tbody>
+      {% for a in e.angebote[:15] %}
+        <tr><td>{{ a.anbieter }}</td><td>{{ a.tarif }}</td>
+        {% if kat == "strom" %}
+          <td class="num">{{ "%.2f"|format(a.arbeitspreis_ct) if a.arbeitspreis_ct is not none else "–" }}</td>
+          <td class="num">{{ "%.2f"|format(a.grundpreis_monat) if a.grundpreis_monat is not none else "–" }}</td>
+        {% else %}
+          <td class="num">{{ a.download_mbit or "–" }}</td>
+          <td class="num">{{ "%.2f"|format(a.monat_effektiv) }}</td>
+        {% endif %}
+        <td class="num">{{ "%.0f"|format(a.bonus) if a.bonus else "–" }}</td>
+        <td class="num">{{ "%.2f"|format(a.kosten_jahr) }}</td>
+        <td class="num {{ 'good' if a.ersparnis_jahr > 0 else 'bad' }}">{{ "%+.2f"|format(a.ersparnis_jahr) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% endif %}
+  {% endif %}
+  {% if d.verlauf|length > 1 %}
+  <details><summary class="muted">Verlauf</summary>
+    <div class="scroll"><table>
+      <thead><tr><th>Zeit</th><th class="num">aktuell €/J</th><th class="num">bestes €/J</th><th class="num">Ersparnis</th></tr></thead>
+      <tbody>{% for v in d.verlauf|reverse %}
+        <tr><td>{{ v.zeit }}</td><td class="num">{{ "%.2f"|format(v.aktuell_jahr) if v.aktuell_jahr is not none else "–" }}</td>
+        <td class="num">{{ "%.2f"|format(v.bestes_jahr) if v.bestes_jahr is not none else "–" }}</td>
+        <td class="num">{{ "%+.2f"|format(v.ersparnis_jahr) if v.ersparnis_jahr is not none else (v.fehler or "–") }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+  </details>
+  {% endif %}
+</section>
+{% endfor %}
+</main>
+</body>
+</html>
