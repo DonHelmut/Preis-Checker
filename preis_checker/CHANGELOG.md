@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.1.5
+- Fix Check24 Strom/Internet: offene Ortsauswahl („71404 Korb“) verdeckte den nächsten Button → Timeout
+- Klicks bei Formularen mit kürzerem Timeout und zweitem Versuch
+
 ## 1.1.4
 - Preisverlauf: Uhrzeiten auf der Zeitachse bei kurzen Zeiträumen
 - Hinweis, wenn erst seit kurzem gemessen wird (7 T/30 T sehen dann gleich aus)
