@@ -50,7 +50,10 @@ FIND_CARDS_JS = r"""
 }
 """
 
-COOKIE_BUTTONS = re.compile(r"^(alle akzeptieren|akzeptieren|geht klar|zustimmen|alles akzeptieren|einverstanden|ok)$", re.I)
+# Zustimmungs-Buttons in Cookie-Bannern („Alle akzeptieren“, „Geht klar“ (Check24), „Zustimmen“ …)
+COOKIE_BUTTONS = re.compile(r"^\W*((alle|alles)\s+)?((cookies?|auswahl)\s+)?(akzeptieren|annehmen|zulassen|erlauben)\W*$"
+                            r"|^\W*(geht klar|zustimmen|alle zustimmen|einverstanden|verstanden|ok|okay|accept all)\W*$", re.I)
+_COOKIE_CONTAINER = "[class*='cookie' i], [id*='cookie' i], [class*='consent' i], [id*='consent' i], [id*='usercentrics' i]"
 
 
 @contextmanager
@@ -120,16 +123,26 @@ def schutzseite_abwarten(page: Page, sekunden: int = 20) -> bool:
     return False
 
 
-def accept_cookies(page: Page) -> None:
-    for frame in [page.main_frame, *page.frames]:
-        try:
-            btn = frame.get_by_role("button", name=COOKIE_BUTTONS)
-            if btn.count():
-                btn.first.click(timeout=3000)
-                page.wait_for_timeout(500)
-                return
-        except Exception:
-            continue
+def accept_cookies(page: Page, warten_s: float = 1.5) -> bool:
+    """Cookie-Banner wegklicken. Wartet kurz, weil viele Banner erst nach dem Laden erscheinen."""
+    ende = time.time() + warten_s
+    while True:
+        for frame in [page.main_frame, *page.frames]:
+            try:
+                kandidaten = [frame.get_by_role("button", name=COOKIE_BUTTONS),
+                              frame.locator(_COOKIE_CONTAINER).locator("button, a, [role=button]")
+                              .filter(has_text=COOKIE_BUTTONS)]
+                for btn in kandidaten:
+                    for i in range(min(btn.count(), 3)):
+                        if btn.nth(i).is_visible():
+                            btn.nth(i).click(timeout=3000)
+                            page.wait_for_timeout(500)
+                            return True
+            except Exception:
+                continue
+        if time.time() >= ende:
+            return False
+        page.wait_for_timeout(500)
 
 
 def _editierbar(loc) -> bool:
@@ -181,6 +194,7 @@ def pick_autocomplete(page: Page) -> None:
 
 
 def submit(page: Page) -> None:
+    accept_cookies(page, warten_s=0)  # spät eingeblendete Banner blockieren sonst den Klick
     btn = page.get_by_role("button", name=re.compile(r"vergleich|berechnen|suchen|prüfen|weiter|tarife", re.I))
     if btn.count():
         btn.first.click()

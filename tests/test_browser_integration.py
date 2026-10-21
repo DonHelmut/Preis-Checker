@@ -95,3 +95,24 @@ def test_haendler_aus_preisvergleich(tmp_path, monkeypatch):
     beam = next(a for a in gefunden if a.name == "Sonos Beam (Gen 2) schwarz")
     assert beam.haendler == "Alternate" and beam.preis == 449.0
     assert all(a.haendler is None for a in gefunden if a is not beam)  # nur der günstigste passende Treffer
+
+
+def test_spaetes_cookie_banner_blockiert_nicht(tmp_path):
+    """Check24-Stil: Banner erscheint verzögert und legt eine Sperrschicht über die Seite."""
+    from preischecker.sources import browser as b
+    (tmp_path / "c24.html").write_text("""<html><body>
+      <button onclick="document.title='abgeschickt'">Tarife vergleichen</button>
+      <script>setTimeout(() => {
+        const w = document.createElement('div'); w.className = 'c24-cookie-consent-wrapper';
+        w.innerHTML = '<div class="c24-strict-blocking-layer" style="position:fixed;inset:0;background:rgba(0,0,0,.3)"></div>'
+          + '<div style="position:fixed;bottom:0;left:0;right:0;background:#fff"><span>Wir nutzen Cookies</span>'
+          + '<a class="c24-cookie-consent-button" onclick="this.closest(\\'.c24-cookie-consent-wrapper\\').remove()">'
+          + '<span>geht klar</span></a></div>';
+        document.body.appendChild(w);
+      }, 600);</script></body></html>""")
+    with b.browser_page({"browser": {"timeout_sekunden": 5}}) as page:
+        page.goto(f"file://{tmp_path}/c24.html")
+        assert b.accept_cookies(page) is True
+        b.submit(page)
+        page.wait_for_timeout(300)
+        assert page.title() == "abgeschickt"
