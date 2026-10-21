@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.1
+- Fix: parallele Shop-Abfragen liefen in Threads und haben sich gegenseitig umgeleitet – jetzt eigener Prozess je Browser
+
 ## 1.0.0
 - Komplett neue Oberfläche: Produktkarten mit Mini-Verlauf, Detailseite mit interaktivem Preisdiagramm (Zeitraum, Shops ein-/ausblenden), Shop-Vergleich, Dunkelmodus
 - Preisverlauf: jeder Shop-Preis wird bei jeder Prüfung gespeichert

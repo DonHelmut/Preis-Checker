@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import time
@@ -58,6 +59,7 @@ def browser_page(cfg: dict):
     bcfg = cfg.get("browser", {})
     with sync_playwright() as p:
         browser = p.chromium.launch(
+            executable_path=os.environ.get("PREISCHECKER_CHROMIUM") or None,
             headless=bcfg.get("headless", True),
             args=["--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"],
         )
