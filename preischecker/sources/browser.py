@@ -245,18 +245,30 @@ _ABSENDEN = [r"^\W*(jetzt\s+)?(tarife\s+)?(vergleichen|berechnen)\W*$", r"vergle
 def submit(page: Page) -> Page:
     """Formular abschicken. Liefert die Seite mit den Ergebnissen (öffnet die Seite einen neuen Tab, diesen)."""
     accept_cookies(page, warten_s=0)  # spät eingeblendete Banner blockieren sonst den Klick
-    vorher = len(page.context.pages)
+    tabs, url = len(page.context.pages), page.url
+    btn = None
     for muster in _ABSENDEN:
         btn = _sichtbar(page.get_by_role("button", name=re.compile(muster, re.I)))
         if btn is not None and _klicken(page, btn):
             break
     else:
+        btn = None
         page.keyboard.press("Enter")
-    page.wait_for_timeout(1500)
-    if len(page.context.pages) > vorher:
-        neu = page.context.pages[-1]
-        neu.wait_for_load_state("domcontentloaded")
-        return neu
+    for versuch in range(2):
+        for _ in range(12):  # Ergebnisseite lädt teils erst nach einigen Sekunden
+            page.wait_for_timeout(1000)
+            if len(page.context.pages) > tabs:
+                neu = page.context.pages[-1]
+                neu.wait_for_load_state("domcontentloaded")
+                return neu
+            if page.url != url:
+                return page
+        if btn is None or versuch:
+            break
+        try:  # nichts passiert: Klick direkt im DOM auslösen
+            btn.evaluate("e => e.click()")
+        except Exception:
+            break
     return page
 
 
