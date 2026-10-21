@@ -1,0 +1,67 @@
+# Kopieren nach config.yaml und eigene Werte eintragen.
+# config.yaml ist in .gitignore (persönliche Daten).
+
+standort:
+  plz: "12345"
+  ort: "Musterstadt"
+  strasse: "Musterstraße"   # für Internet-Verfügbarkeit nötig
+  hausnummer: "1"
+
+strom:
+  aktiv: true
+  anbieter: "Stadtwerke Musterstadt"
+  tarif: "Grundversorgung"
+  verbrauch_kwh: 2500
+  arbeitspreis_ct: 32.5       # brutto ct/kWh (steht auf der Rechnung)
+  grundpreis_monat: 12.50     # brutto €/Monat
+  vertragsende: "2027-03-31"  # optional, leer lassen wenn unbefristet
+  kuendigungsfrist_wochen: 4
+  filter:
+    max_laufzeit_monate: 12
+    bonus_einrechnen: false   # true = Neukundenbonus mindert Kosten im 1. Jahr
+    nur_oekostrom: false
+
+internet:
+  aktiv: true
+  anbieter: "Telekom"
+  tarif: "MagentaZuhause L"
+  preis_monat: 44.95          # aktueller regulärer Monatspreis
+  download_mbit: 100
+  vertragsende: "2026-12-31"
+  kuendigungsfrist_wochen: 4
+  filter:
+    min_download_mbit: 100
+    max_laufzeit_monate: 24
+    bonus_einrechnen: true    # Bonus/Startguthaben auf Laufzeit umlegen
+
+produkte:
+  aktiv: true
+  quellen: [geizhals, alternate, mindfactory]   # Geizhals deckt fast alle DE-Shops ab
+  nur_lieferbar: true
+  schnaeppchen_prozent: 15   # Alarm, wenn Preis so viel % unter eigenem Ø-Verlauf (oder Shop-Rabatt so hoch)
+  markt_prozent: 25          # Alarm, wenn ein Shop so viel % unter den anderen liegt (Preisfehler)
+  # eigene_shops:                               # weitere Shops, {q} = Suchbegriff
+  #   caseking: "https://www.caseking.de/search?search={q}"
+  liste:
+    - suche: "Nintendo Switch 2"
+      zielpreis: 430                 # optional, ohne Zielpreis nur Schnäppchen-Alarm
+      min_preis: 300                 # filtert Zubehör (Hüllen, Spiele ...)
+      darf_nicht_enthalten: ["hülle", "tasche", "schutzfolie", "controller", "bundle"]
+    - suche: "RX 9070 XT"
+      zielpreis: 600
+      min_preis: 450
+      # muss_enthalten: ["9070", "xt"]   # Standard: alle Wörter aus "suche"
+
+pruefung:
+  intervall_stunden: 6          # 4× täglich
+  benachrichtigen_ab_euro_jahr: 50   # Meldung, wenn Ersparnis >= diesem Betrag
+
+benachrichtigung:
+  telegram_bot_token: ""
+  telegram_chat_id: ""
+  ntfy_topic: ""              # z.B. "mein-preischecker" -> https://ntfy.sh/mein-preischecker
+  webhook_url: ""             # z.B. Home Assistant: http://ha:8123/api/webhook/preischecker
+
+browser:
+  headless: true
+  timeout_sekunden: 60

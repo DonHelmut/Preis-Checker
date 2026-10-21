@@ -1,0 +1,11 @@
+services:
+  preischecker:
+    build: .
+    container_name: preischecker
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+    shm_size: "1gb"

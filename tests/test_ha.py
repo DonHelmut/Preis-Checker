@@ -1,0 +1,33 @@
+import yaml
+
+from preischecker import compare, db, ha
+from preischecker.config import load_config
+from preischecker.models import ProduktAngebot
+
+
+def test_sensoren(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    path = tmp_path / "config.yaml"
+    artikel = {"suche": "Nintendo Switch 2", "zielpreis": 430}
+    path.write_text(yaml.safe_dump({"produkte": {"aktiv": True, "liste": [artikel, {"suche": "RX 9070 XT"}]},
+                                    "strom": {"aktiv": False}}))
+    cfg = load_config(path)
+    db.speichern(compare.produkt(cfg, artikel, [ProduktAngebot("Nintendo Switch 2", 419.0, "geizhals", "https://g")]))
+    s = {e: (st, a) for e, st, a in ha.sensoren(cfg)}
+    st, a = s["sensor.preischecker_nintendo_switch_2"]
+    assert st == 419.0 and a["shop"] == "geizhals" and a["ziel_erreicht"] and a["unit_of_measurement"] == "€"
+    assert s["sensor.preischecker_rx_9070_xt"][0] == "unknown"
+    assert "sensor.preischecker_strom_ersparnis" not in s
+
+
+def test_slug():
+    assert ha.slug("Grafikkarte Größe 9070 XT") == "grafikkarte_groesse_9070_xt"
+
+
+def test_benachrichtigen_ruft_dienst(monkeypatch):
+    aufrufe = []
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "x")
+    monkeypatch.setattr(ha, "_post", lambda pfad, daten: aufrufe.append((pfad, daten)))
+    from preischecker import notify
+    notify.test({"benachrichtigung": {"ha_dienst": "notify.mobile_app_handy"}})
+    assert aufrufe[0][0] == "/services/notify/mobile_app_handy" and "Testnachricht" in aufrufe[0][1]["message"]

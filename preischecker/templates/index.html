@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% set seite = "index" %}
+{% block aktionen %}
+  <form method="post" action="pruefen">
+    <button {% if laeuft %}disabled{% endif %}>{% if laeuft %}Prüfung läuft …{% else %}Jetzt prüfen{% endif %}</button>
+  </form>
+{% endblock %}
+{% block inhalt %}
+
+
+{% if produkte %}
+<section>
+  <h2>Produkte</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Suche</th><th class="num">Bester Preis</th><th>Shop</th><th class="num">Ziel</th><th class="num">Tiefst</th><th>Stand</th></tr></thead>
+    <tbody>
+    {% for p in produkte %}{% set e = p.letzte %}
+      <tr>
+        <td>{{ p.artikel.suche }}</td>
+        {% if e and e.angebote %}{% set a = e.angebote[0] %}
+          <td class="num {{ 'good' if e.ziel_erreicht or e.schnaeppchen }}"><b>{{ "%.2f"|format(a.preis) }} €</b>
+            {% if e.schnaeppchen %}<span class="tag" title="{{ e.gruende|join(' · ') }}">Schnäppchen</span>{% elif a.aktion %}<span class="tag">Aktion</span>{% endif %}</td>
+          <td>{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener" title="{{ a.name }}">{{ a.shop }}</a>{% else %}{{ a.shop }}{% endif %}</td>
+        {% else %}
+          <td class="num muted">–</td><td class="muted">{{ e.fehler if e else "noch nicht geprüft" }}</td>
+        {% endif %}
+        <td class="num">{{ "%.2f"|format(p.artikel.zielpreis) if p.artikel.zielpreis else "–" }}</td>
+        <td class="num">{{ "%.2f"|format(p.tiefst) if p.tiefst is not none else "–" }}</td>
+        <td class="muted">{{ e.zeit if e else "" }}</td>
+      </tr>
+      {% if e and e.gruende %}<tr><td colspan="6" class="good">{{ e.gruende|join(" · ") }}</td></tr>{% endif %}
+      {% if e and e.angebote|length > 1 %}
+      <tr><td colspan="6"><details><summary class="muted">{{ e.angebote|length }} Angebote</summary>
+        <table>{% for a in e.angebote[:10] %}
+          <tr><td class="num">{{ "%.2f"|format(a.preis) }} €{% if a.rabatt_prozent %} <span class="muted">−{{ "%.0f"|format(a.rabatt_prozent) }}%</span>{% endif %}</td><td>{{ a.shop }}</td>
+          <td style="white-space:normal">{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</td></tr>
+        {% endfor %}</table>
+      </details></td></tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% if not daten and not produkte %}<section>Keine Kategorie aktiv. <code>config.yaml</code> prüfen.</section>{% endif %}
+
+{% for kat, d in daten.items() %}
+<section>
+  <h2>{{ "Strom" if kat == "strom" else "Internet" }}</h2>
+  {% set e = d.letzte %}
+  {% if not e %}
+    <p class="muted">Noch keine Prüfung gelaufen.</p>
+  {% else %}
+    <p class="muted">Stand: {{ e.zeit }}</p>
+    {% if e.fehler %}<p class="err">{{ e.fehler }}</p>{% endif %}
+    <div class="kpis">
+      <div class="kpi"><b>{{ "%.2f"|format(e.aktuell.kosten_jahr) }} €</b><span>aktuell/Jahr · {{ e.aktuell.anbieter }}</span></div>
+      {% if e.angebote %}
+      <div class="kpi"><b>{{ "%.2f"|format(e.angebote[0].kosten_jahr) }} €</b><span>günstigstes/Jahr · {{ e.angebote[0].anbieter }}</span></div>
+      <div class="kpi"><b class="{{ 'good' if e.beste_ersparnis_jahr > 0 else 'bad' }}">{{ "%+.2f"|format(e.beste_ersparnis_jahr) }} €</b><span>Ersparnis/Jahr</span></div>
+      {% endif %}
+      {% if e.aktuell.kuendigen_bis %}<div class="kpi"><b>{{ e.aktuell.kuendigen_bis }}</b><span>kündigen bis</span></div>{% endif %}
+    </div>
+    {% if e.angebote %}
+    <div class="scroll"><table>
+      <thead><tr><th>Anbieter</th><th>Tarif</th>
+        {% if kat == "strom" %}<th class="num">ct/kWh</th><th class="num">Grund €/M</th>{% else %}<th class="num">Mbit/s</th><th class="num">Ø €/Monat</th>{% endif %}
+        <th class="num">Bonus</th><th class="num">€/Jahr</th><th class="num">Ersparnis</th></tr></thead>
+      <tbody>
+      {% for a in e.angebote[:15] %}
+        <tr><td>{{ a.anbieter }}</td><td>{{ a.tarif }}</td>
+        {% if kat == "strom" %}
+          <td class="num">{{ "%.2f"|format(a.arbeitspreis_ct) if a.arbeitspreis_ct is not none else "–" }}</td>
+          <td class="num">{{ "%.2f"|format(a.grundpreis_monat) if a.grundpreis_monat is not none else "–" }}</td>
+        {% else %}
+          <td class="num">{{ a.download_mbit or "–" }}</td>
+          <td class="num">{{ "%.2f"|format(a.monat_effektiv) }}</td>
+        {% endif %}
+        <td class="num">{{ "%.0f"|format(a.bonus) if a.bonus else "–" }}</td>
+        <td class="num">{{ "%.2f"|format(a.kosten_jahr) }}</td>
+        <td class="num {{ 'good' if a.ersparnis_jahr > 0 else 'bad' }}">{{ "%+.2f"|format(a.ersparnis_jahr) }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% endif %}
+  {% endif %}
+  {% if d.verlauf|length > 1 %}
+  <details><summary class="muted">Verlauf</summary>
+    <div class="scroll"><table>
+      <thead><tr><th>Zeit</th><th class="num">aktuell €/J</th><th class="num">bestes €/J</th><th class="num">Ersparnis</th></tr></thead>
+      <tbody>{% for v in d.verlauf|reverse %}
+        <tr><td>{{ v.zeit }}</td><td class="num">{{ "%.2f"|format(v.aktuell_jahr) if v.aktuell_jahr is not none else "–" }}</td>
+        <td class="num">{{ "%.2f"|format(v.bestes_jahr) if v.bestes_jahr is not none else "–" }}</td>
+        <td class="num">{{ "%+.2f"|format(v.ersparnis_jahr) if v.ersparnis_jahr is not none else (v.fehler or "–") }}</td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+  </details>
+  {% endif %}
+</section>
+{% endfor %}
+<footer class="muted" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px">
+  <span>Version: {{ version.version or "unbekannt" }}{% if version.update %} · Update: {{ version.update }}{% endif %}</span>
+  {% if not addon %}<form method="post" action="api/update" onsubmit="return confirm('Von GitHub aktualisieren und neu starten?')">
+    <button style="background:var(--muted)">Aktualisieren</button>
+  </form>{% else %}<span>Updates über Home Assistant → Einstellungen → Add-ons</span>{% endif %}
+</footer>
+{% endblock %}
