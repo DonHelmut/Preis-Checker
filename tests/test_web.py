@@ -89,3 +89,35 @@ def test_footer_update_status(tmp_path, monkeypatch):
     (tmp_path / "update.status").write_text("ok a -> b")
     html = web.create_app(tmp_path / "config.yaml").test_client().get("/").get_data(as_text=True)
     assert "Update: ok a -&gt; b" in html and "built-in" not in html
+
+
+def test_diagnose_im_hintergrund(tmp_path, monkeypatch):
+    import time
+    from preischecker import web, worker
+    from preischecker.models import ProduktAngebot
+    monkeypatch.setattr(web, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+
+    class FakePool:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def submit(self, fn, *args):
+            class F:
+                def result(self, timeout=None):
+                    return ("Switch 2", "mediamarkt", [ProduktAngebot("Nintendo Switch 2 inkl. Joy-Con 2 Controller", 469.0, "mediamarkt"),
+                                                       ProduktAngebot("Nintendo Switch 2 Tasche", 19.0, "mediamarkt")], None, 4.2)
+            return F()
+    monkeypatch.setattr(web, "ProcessPoolExecutor", FakePool)
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump({"produkte": {"liste": [{"suche": "Switch 2", "min_preis": 300,
+                                                            "darf_nicht_enthalten": ["controller"]}]}}))
+    app = web.create_app(path).test_client()
+    did = app.get("/api/diagnose?shop=mediamarkt&q=Switch 2").get_json()["id"]
+    for _ in range(50):
+        d = app.get(f"/api/diagnose/{did}").get_json()
+        if d["status"] != "laeuft":
+            break
+        time.sleep(0.02)
+    assert d["status"] == "fertig"
+    assert [a["grund"] for a in d["angebote"]] == ["enthält „controller“", "unter Mindestpreis"]

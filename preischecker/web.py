@@ -19,6 +19,7 @@ from .status import status_daten
 
 log = logging.getLogger(__name__)
 SUCHEN: dict[str, dict] = {}  # Schnellsuchen im Speicher, neueste zuletzt
+DIAGNOSEN: dict[str, dict] = {}
 
 
 class IngressPrefix:
@@ -312,7 +313,10 @@ def create_app(config_path=None) -> Flask:
 
     @app.get("/api/diagnose")
     def api_diagnose():
-        """Einen Shop live durchsuchen und jedes erkannte Angebot mit Filter-Ergebnis zeigen."""
+        """Einen Shop live durchsuchen (im Hintergrund) und jedes erkannte Angebot mit Filter-Ergebnis zeigen.
+
+        Antwort: {"id": …}; Ergebnis unter /api/diagnose/<id> abholen.
+        """
         cfg = load_config(config_path)
         shop, q = request.args.get("shop", ""), request.args.get("q", "").strip()
         urls = ansicht.aktive_shops(cfg) | {k: v.url for k, v in SHOPS.items()}
@@ -321,14 +325,33 @@ def create_app(config_path=None) -> Flask:
         if shop not in urls or not q:
             return jsonify({"fehler": "shop und q angeben", "shops": sorted(urls)}), 400
         artikel = next((a for a in cfg["produkte"].get("liste") or [] if a["suche"].lower() == q.lower()), {"suche": q})
-        with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
-            _, _, gefunden, fehler, dauer = pool.submit(worker.auftrag, cfg, q, shop, urls[shop], True).result(timeout=150)
-        neuester = max((DATA_DIR / "debug").glob(f"{shop}-*"), key=lambda p: p.stat().st_mtime, default=None)
-        return jsonify({"shop": shop, "suche": q, "artikel": artikel, "fehler": fehler, "dauer": round(dauer, 1),
-                        "seite": {"titel": _seitentitel(neuester / "seite.html"), "url": _lesen_datei(neuester / "url.txt"),
-                                  "kacheln": (_lesen_datei(neuester / "kacheln.txt") or "")[:3000]} if neuester else None,
-                        "angebote": [{"name": a.name, "preis": a.preis, "lieferbar": a.lieferbar, "url": a.url,
-                                      "grund": shops_modul.ablehnungsgrund(a, artikel)} for a in gefunden]})
+        did = uuid.uuid4().hex[:10]
+        DIAGNOSEN[did] = {"status": "laeuft", "shop": shop, "suche": q, "artikel": artikel}
+        while len(DIAGNOSEN) > 20:
+            DIAGNOSEN.pop(next(iter(DIAGNOSEN)))
+
+        def lauf():
+            try:
+                with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
+                    _, _, gefunden, fehler, dauer = pool.submit(worker.auftrag, cfg, q, shop, urls[shop], True).result(timeout=180)
+                neuester = max((DATA_DIR / "debug").glob(f"{shop}-*"), key=lambda p: p.stat().st_mtime, default=None)
+                DIAGNOSEN[did] |= {
+                    "status": "fertig", "fehler": fehler, "dauer": round(dauer, 1),
+                    "seite": {"titel": _seitentitel(neuester / "seite.html"), "url": _lesen_datei(neuester / "url.txt"),
+                              "kacheln": (_lesen_datei(neuester / "kacheln.txt") or "")[:3000]} if neuester else None,
+                    "angebote": [{"name": a.name, "preis": a.preis, "lieferbar": a.lieferbar, "url": a.url,
+                                  "grund": shops_modul.ablehnungsgrund(a, artikel)} for a in gefunden]}
+            except Exception as e:
+                DIAGNOSEN[did] |= {"status": "fehler", "fehler": f"{type(e).__name__}: {e}"}
+
+        threading.Thread(target=lauf, daemon=True).start()
+        return jsonify({"id": did})
+
+    @app.get("/api/diagnose/<did>")
+    def api_diagnose_ergebnis(did):
+        if did not in DIAGNOSEN:
+            abort(404)
+        return jsonify(DIAGNOSEN[did])
 
     @app.get("/api/debug")
     def api_debug():
