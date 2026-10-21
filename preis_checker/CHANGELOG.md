@@ -1,5 +1,9 @@
 # Changelog
 
+
+## 1.1.4
+- Preisverlauf: Uhrzeiten auf der Zeitachse bei kurzen Zeiträumen
+- Hinweis, wenn erst seit kurzem gemessen wird (7 T/30 T sehen dann gleich aus)
 ## 1.1.3
 - Fix Check24 Internet: verzögert eingeblendetes Cookie-Banner („geht klar“) blockierte den Vergleichen-Button
 - Cookie-Banner allgemein robuster erkannt (wartet kurz, sucht auch Links/Buttons in Consent-Bereichen)

@@ -6,6 +6,8 @@
   const eurFmt = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
   const eurKurz = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
   const datumFmt = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit" });
+  const uhrFmt = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const tagUhrFmt = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   const zeitFmt = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const eur = v => eurFmt.format(v);
   const farbe = name => getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
@@ -75,6 +77,7 @@
     const tip = box.querySelector(".tooltip");
     const legende = document.querySelector(box.dataset.legende);
     const segment = document.querySelector(box.dataset.segment);
+    const hinweis = box.querySelector(".hinweis");
 
     if (!serien.length) { flaeche.innerHTML = '<div class="leer">Noch kein Verlauf. Er entsteht automatisch mit jeder Prüfung.</div>'; return; }
 
@@ -143,11 +146,26 @@
         t.textContent = `${eurKurz.format(v)} €`;
       });
       el("line", { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, stroke: farbe("axis") }, ax);
-      const anzahlX = Math.max(2, Math.min(6, Math.floor((W - m.l - m.r) / 90)));
+      // Achsenbeschriftung passend zur Spanne: Uhrzeit (< 2 Tage), Tag+Uhrzeit (< 5 Tage), sonst Datum
+      const spanne = t1 - t0;
+      const anzahlX = Math.max(2, Math.min(6, Math.floor((W - m.l - m.r) / (spanne < 5 * 864e5 && spanne >= 2 * 864e5 ? 110 : 90))));
+      let letzterTag = "";
       for (let i = 0; i <= anzahlX; i++) {
-        const t = t0 + (t1 - t0) * i / anzahlX;
+        const t = t0 + spanne * i / anzahlX, d = new Date(t);
         const txt = el("text", { x: x(t), y: H - 9, "text-anchor": i === 0 ? "start" : i === anzahlX ? "end" : "middle" }, ax);
-        txt.textContent = datumFmt.format(new Date(t));
+        if (spanne < 2 * 864e5) {
+          const tag = datumFmt.format(d);  // Datum nur beim ersten Wert bzw. Tageswechsel
+          txt.textContent = tag !== letzterTag ? `${tag} ${uhrFmt.format(d)}` : uhrFmt.format(d);
+          letzterTag = tag;
+        } else {
+          txt.textContent = (spanne < 5 * 864e5 ? tagUhrFmt : datumFmt).format(d);
+        }
+      }
+      // Hinweis, wenn der gewählte Zeitraum länger ist als die bisherigen Messungen
+      if (hinweis) {
+        const zuKurz = tage && tMax - tage * 864e5 < tMinDaten;
+        hinweis.hidden = !zuKurz;
+        if (zuKurz) hinweis.textContent = `Gemessen wird erst seit ${tagUhrFmt.format(new Date(tMinDaten))} – der Zeitraum füllt sich mit jeder Prüfung.`;
       }
       if (daten.ziel) {
         el("line", { x1: m.l, x2: W - m.r, y1: y(daten.ziel), y2: y(daten.ziel), stroke: farbe("ink-2"),
