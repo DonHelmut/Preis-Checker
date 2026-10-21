@@ -20,7 +20,7 @@ def test_seite_zeigt_werte(tmp_path, monkeypatch):
     html = app.get("/einstellungen").get_data(as_text=True)
     assert 'value="Stadtwerke X"' in html and 'value="32.5"' in html
     assert 'value="RX 9070 XT"' in html and 'value="600"' in html
-    assert 'href="einstellungen"' in html and 'class="aktiv"' in html
+    assert 'href="/einstellungen"' in html and 'class="aktiv"' in html
 
 
 def test_speichern(tmp_path, monkeypatch):
@@ -87,3 +87,35 @@ def test_api_einstellungen(tmp_path, monkeypatch):
     assert cfg["benachrichtigung"] == {"telegram_bot_token": "geheim", "ha_dienst": "notify.handy"}
     assert app.get("/api/einstellungen").get_json()["benachrichtigung"]["telegram_bot_token"] == "***"
     assert app.post("/api/einstellungen", data="kaputt").status_code == 400
+
+
+def test_schnellsuche_und_beobachten(tmp_path, monkeypatch):
+    from preischecker import runner
+    from preischecker.models import ProduktAngebot
+    from preischecker import compare
+
+    def fake(cfg, artikel):
+        return compare.produkt(cfg, artikel, [ProduktAngebot("Dyson V15 Detect", 499.0, "geizhals", "https://g/1"),
+                                              ProduktAngebot("Dyson V15 Akku", 89.0, "alternate")]) | {"fehler": None}
+    monkeypatch.setattr(runner, "schnellsuche", fake)
+    path, app = _app(tmp_path, monkeypatch, {"produkte": {"aktiv": False}})
+    r = app.post("/suche", data={"q": "Dyson V15", "min_preis": "200"})
+    assert r.status_code == 302 and "/suche/" in r.headers["Location"]
+    import time
+    for _ in range(50):
+        html = app.get(r.headers["Location"]).get_data(as_text=True)
+        if "läuft" not in html:
+            break
+        time.sleep(0.05)
+    assert "499.00 €" in html and "https://g/1" in html and "Akku" not in html   # min_preis filtert Zubehör
+    app.post("/beobachten", data={"q": "Dyson V15", "min_preis": "200", "zielpreis": "450"})
+    cfg = load_raw(path)
+    assert cfg["produkte"]["aktiv"] is True
+    assert cfg["produkte"]["liste"] == [{"suche": "Dyson V15", "zielpreis": 450.0, "min_preis": 200.0}]
+
+
+def test_links_mit_ingress(tmp_path, monkeypatch):
+    _, app = _app(tmp_path, monkeypatch, {})
+    html = app.get("/", headers={"X-Ingress-Path": "/api/hassio_ingress/abc"}).get_data(as_text=True)
+    assert 'action="/api/hassio_ingress/abc/suche"' in html
+    assert 'href="/api/hassio_ingress/abc/einstellungen"' in html

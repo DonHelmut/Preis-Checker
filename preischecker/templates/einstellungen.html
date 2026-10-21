@@ -5,7 +5,7 @@
 {% if test %}<p class="ok">Testnachricht gesendet – falls nichts ankommt, Werte prüfen.</p>{% endif %}
 {% for f in fehler %}<p class="err">{{ f }}</p>{% endfor %}
 
-<form method="post" action="einstellungen">
+<form method="post" action="{{ url_for('einstellungen_speichern') }}">
 {% for titel, hinweis, felder in abschnitte %}
 <section>
   <h2>{{ titel }}</h2>
@@ -59,7 +59,7 @@
 {% endfor %}
 <p style="display:flex;gap:10px;flex-wrap:wrap">
   <button>Speichern</button>
-  <button formaction="test-benachrichtigung" style="background:var(--muted)">Speichern + Testnachricht</button>
+  <button formaction="{{ url_for('test_benachrichtigung') }}" style="background:var(--muted)">Speichern + Testnachricht</button>
 </p>
 </form>
 <script>

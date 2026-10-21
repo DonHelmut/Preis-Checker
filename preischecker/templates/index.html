@@ -1,11 +1,20 @@
 {% extends "base.html" %}
 {% set seite = "index" %}
 {% block aktionen %}
-  <form method="post" action="pruefen">
+  <form method="post" action="{{ url_for('pruefen') }}">
     <button {% if laeuft %}disabled{% endif %}>{% if laeuft %}Prüfung läuft …{% else %}Jetzt prüfen{% endif %}</button>
   </form>
 {% endblock %}
 {% block inhalt %}
+<section>
+  <h2>Schnellsuche</h2>
+  <form method="post" action="{{ url_for('suche_starten') }}" class="suche">
+    <input type="text" name="q" placeholder="Was suchst du? z. B. Dyson V15, AirPods Pro 2" required>
+    <input type="text" name="min_preis" inputmode="decimal" placeholder="ab € (optional)" title="Mindestpreis, filtert Zubehör">
+    <button>Suchen</button>
+  </form>
+  <p class="muted" style="margin:6px 0 0;font-size:13px">Sucht bei Geizhals, Alternate, Mindfactory. Dauert ca. 30–60 Sekunden.</p>
+</section>
 
 
 {% if produkte %}
@@ -100,8 +109,8 @@
 </section>
 {% endfor %}
 <footer class="muted" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px">
-  <span>Version: {{ version.version or "unbekannt" }}{% if version.update %} · Update: {{ version.update }}{% endif %}</span>
-  {% if not addon %}<form method="post" action="api/update" onsubmit="return confirm('Von GitHub aktualisieren und neu starten?')">
+  <span>{% if version["version"] %}Version: {{ version["version"] }}{% endif %}{% if version["update"] %} · Update: {{ version["update"] }}{% endif %}</span>
+  {% if not addon %}<form method="post" action="{{ url_for('update_anfordern') }}" onsubmit="return confirm('Von GitHub aktualisieren und neu starten?')">
     <button style="background:var(--muted)">Aktualisieren</button>
   </form>{% else %}<span>Updates über Home Assistant → Einstellungen → Add-ons</span>{% endif %}
 </footer>

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+import uuid
 from datetime import datetime
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
@@ -12,6 +13,7 @@ from .status import status_daten
 from .config import DATA_DIR, load_config, load_raw, save_raw
 
 log = logging.getLogger(__name__)
+SUCHEN: dict[str, dict] = {}  # Schnellsuchen im Speicher, neueste zuletzt
 
 
 class IngressPrefix:
@@ -95,6 +97,64 @@ def create_app(config_path=None) -> Flask:
                                  "tiefst": min(verlauf) if verlauf else None})
         return render_template("index.html", daten=daten, produkte=produkte, laeuft=runner.laeuft(),
                                version=version_info(), addon=ha.aktiv())
+
+    @app.post("/suche")
+    def suche_starten():
+        q = request.form.get("q", "").strip()
+        if not q:
+            return redirect(url_for("index"))
+        artikel = {"suche": q}
+        try:
+            min_preis = settings._zahl(request.form.get("min_preis", ""), "float")
+        except ValueError:
+            min_preis = None
+        if min_preis:
+            artikel["min_preis"] = min_preis
+        sid = uuid.uuid4().hex[:10]
+        SUCHEN[sid] = {"artikel": artikel, "status": "laeuft", "start": datetime.now()}
+        while len(SUCHEN) > 20:
+            SUCHEN.pop(next(iter(SUCHEN)))
+        cfg = load_config(config_path)
+
+        def lauf():
+            try:
+                SUCHEN[sid]["ergebnis"] = runner.schnellsuche(cfg, artikel)
+                SUCHEN[sid]["status"] = "fertig"
+            except Exception as e:
+                log.exception("Schnellsuche fehlgeschlagen")
+                SUCHEN[sid] |= {"status": "fehler", "fehler": f"{type(e).__name__}: {e}"}
+
+        threading.Thread(target=lauf, daemon=True).start()
+        return redirect(url_for("suche_anzeigen", sid=sid))
+
+    @app.get("/suche/<sid>")
+    def suche_anzeigen(sid):
+        s = SUCHEN.get(sid)
+        if not s:
+            return redirect(url_for("index"))
+        return render_template("suche.html", s=s, sid=sid)
+
+    @app.post("/beobachten")
+    def beobachten():
+        q = request.form.get("q", "").strip()
+        if q:
+            cfg = load_raw(config_path)
+            liste = cfg.setdefault("produkte", {}).setdefault("liste", []) or []
+            cfg["produkte"]["liste"] = liste
+            cfg["produkte"]["aktiv"] = True
+            artikel = next((a for a in liste if a.get("suche", "").lower() == q.lower()), None)
+            if artikel is None:
+                artikel = {"suche": q}
+                liste.append(artikel)
+            for f in ("zielpreis", "min_preis"):
+                try:
+                    wert = settings._zahl(request.form.get(f, ""), "float")
+                except ValueError:
+                    wert = None
+                if wert:
+                    artikel[f] = wert
+            save_raw(cfg, config_path)
+        return redirect(url_for("index"))
 
     @app.post("/pruefen")
     def pruefen():
