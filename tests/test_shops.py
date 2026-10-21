@@ -118,3 +118,8 @@ def test_ablehnungsgruende_und_bundles():
     assert g("Sonos Beam Gen 2", 99) == "unter Mindestpreis"
     assert g("Sonos Arc Ultra") == "Suchwörter fehlen"
     assert ablehnungsgrund(ProduktAngebot("Sonos Beam Gen 2 + Sub Mini Set", 900, "x"), art | {"bundles": True}) is None
+
+
+def test_galaxus_preisformat():
+    assert preis("Sonos Beam Gen 2\n449.–\nMorgen geliefert") == 449.0
+    assert preis("1.299.–") == 1299.0

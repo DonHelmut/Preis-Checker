@@ -60,7 +60,7 @@ GRUPPEN_NAMEN = {"vergleich": "Preisvergleiche", "elektronik": "Elektronikmärkt
                  "hardware": "PC-Hardware", "allgemein": "Kaufhäuser"}
 STANDARD_AUS = {"conrad", "proshop"}  # standardmäßig aus, per Einstellung zuschaltbar
 
-_BETRAG = r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2})|,[-–])"
+_BETRAG = r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2})|[,.][-–])"  # 449,90 · 449,– · 449.– (Galaxus)
 _PREIS = re.compile(rf"€\s*{_BETRAG}|{_BETRAG}\s*€?")
 _KEIN_PREIS_DAVOR = re.compile(r"(versand|uvp|statt|spar|ersparnis|rabatt|cashback|gutschein|pfand|zzgl)\W*$", re.I)
 _KEIN_PREIS_DANACH = re.compile(r"^\W*(mtl|monat|/\s*m|rate|finanz)", re.I)
@@ -162,6 +162,8 @@ def passt(angebot: ProduktAngebot, artikel: dict) -> bool:
 def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool = False) -> list[ProduktAngebot]:
     url = url_vorlage.replace("{p}", quote(suche)).replace("{q}", quote_plus(suche))
     page.goto(url, wait_until="domcontentloaded")
+    if not b.schutzseite_abwarten(page):
+        page.reload(wait_until="domcontentloaded")  # Cloudflare lässt beim 2. Anlauf oft durch
     if not b.schutzseite_abwarten(page):
         b.dump_debug(page, f"{shop}-{norm(suche)[:30]}-schutz", [])
         raise BlockiertError(f"Bot-Schutz: {page.title()[:60]}")

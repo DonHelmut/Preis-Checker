@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.4
+- Galaxus-Preisformat („449.–“) wird erkannt
+- Bot-Schutz: zweiter Anlauf nach Neuladen, „Human Verification“ (Euronics) erkannt
+- Diagnose: optionale Such-URL zum Ausprobieren, Seitentitel und erkannte Kacheln im Ergebnis
+
 ## 1.0.3
 - Sets/Bundles („… + Era 100“, „Set“, „Bundle“) werden standardmäßig aussortiert (pro Artikel `bundles: true` erlaubt sie)
 - Diagnose-Schnittstelle `/api/diagnose?shop=…&q=…`: zeigt jedes erkannte Angebot mit Grund fürs Aussortieren

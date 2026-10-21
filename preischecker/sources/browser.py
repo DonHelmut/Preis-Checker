@@ -19,7 +19,7 @@ from ..config import DATA_DIR
 FIND_CARDS_JS = r"""
 ({keyword, minLen}) => {
   const kw = new RegExp(keyword, 'i');
-  const price = /(\d+[.,]\d{2}\s*€|€\s*\d+[.,]\d{2}|\d+,[-–])/;
+  const price = /(\d+[.,]\d{2}\s*€|€\s*\d+[.,]\d{2}|\d+[,.][-–])/;
   const els = Array.from(document.querySelectorAll('body *'));
   const cand = new Set();
   for (const el of els) {
@@ -90,7 +90,8 @@ def browser_page(cfg: dict):
             browser.close()
 
 
-_SCHUTZSEITE = re.compile(r"nur einen moment|just a moment|attention required|checking your browser|bot detected"
+_SCHUTZSEITE = re.compile(r"nur einen moment|just a moment|attention required|checking your browser|bot detected|human verification"
+                          r"|verify you are human|pardon our interruption"
                           r"|access denied|zugriff verweigert|captcha|sicherheitsüberprüfung", re.I)
 
 
