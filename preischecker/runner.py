@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import logging
-import queue
+import multiprocessing
 import threading
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from . import compare, db, ha, notify
+from . import compare, db, ha, notify, worker
 from .models import ProduktAngebot
-from .sources import browser, check24, shops
+from .sources import check24, shops
 
 log = logging.getLogger(__name__)
 _lock = threading.Lock()
@@ -64,67 +65,46 @@ NAECHSTE_PRUEFUNG: dict = {"zeit": None}
 
 def sammeln(cfg: dict, auftraege: list[tuple[str, str, str]], fortschritt: Fortschritt,
             debug: bool = False, status_speichern: bool = True) -> tuple[dict, dict]:
-    """Shops parallel durchsuchen. auftraege = [(suche, shop, url_vorlage)].
+    """Shops parallel durchsuchen (je paralleler Browser ein Prozess). auftraege = [(suche, shop, url_vorlage)].
 
     Liefert ({suche: [ProduktAngebot]}, {suche: [fehlertext]}).
     """
-    q: queue.Queue = queue.Queue()
-    for a in auftraege:
-        q.put(a)
     angebote: dict[str, list[ProduktAngebot]] = {}
     fehler: dict[str, list[str]] = {}
-    lock = threading.Lock()
     parallel = max(1, min(int(cfg["produkte"].get("parallel", 3)), len(auftraege) or 1))
+    label = lambda a: f"{shops.shop_name(a[1])}: {a[0]}"  # noqa: E731
 
-    def ein_auftrag(page, suche, shop, url):
-        label = f"{shops.shop_name(shop)}: {suche}"
-        fortschritt.schritt_start(label)
-        t0 = time.time()
-        try:
-            gefunden = shops.suchen(page, shop, url, suche, cfg, debug)
-            ok, fehlertext = True, None
-        except Exception as e:
-            gefunden, ok, fehlertext = [], False, f"{type(e).__name__}: {str(e).splitlines()[0][:160]}"
-            log.warning("%s fehlgeschlagen: %s", label, fehlertext)
-        with lock:
-            angebote.setdefault(suche, []).extend(gefunden)
-            if not ok:
-                fehler.setdefault(suche, []).append(f"{shops.shop_name(shop)}: {fehlertext.split(':')[0]}")
+    def verbuchen(suche, shop, gefunden, fehlertext, dauer):
+        angebote.setdefault(suche, []).extend(gefunden)
+        if fehlertext:
+            fehler.setdefault(suche, []).append(f"{shops.shop_name(shop)}: {fehlertext.split(':')[0]}")
         if status_speichern:
-            db.shop_status_setzen(shop, ok, len(gefunden), time.time() - t0, fehlertext)
-        fortschritt.schritt_fertig(label)
+            db.shop_status_setzen(shop, fehlertext is None, len(gefunden), dauer, fehlertext)
+        fortschritt.schritt_fertig(f"{shops.shop_name(shop)}: {suche}")
 
-    def arbeiter():
-        neustarts = 0
-        while not q.empty() and neustarts <= 2:
-            try:
-                with browser.browser_page(cfg) as page:
-                    while True:
-                        try:
-                            suche, shop, url = q.get_nowait()
-                        except queue.Empty:
-                            return
-                        ein_auftrag(page, suche, shop, url)
-                        if page.is_closed():
-                            raise RuntimeError("Browser-Tab geschlossen")
-            except Exception:
-                neustarts += 1
-                log.exception("Browser neu gestartet (%d)", neustarts)
-        # Rest nach zu vielen Abstürzen als Fehler verbuchen
-        while True:
-            try:
-                suche, shop, _ = q.get_nowait()
-            except queue.Empty:
-                return
-            with lock:
-                fehler.setdefault(suche, []).append(f"{shops.shop_name(shop)}: Browser-Absturz")
-            fortschritt.schritt_fertig("")
+    if parallel == 1:
+        for a in auftraege:
+            fortschritt.schritt_start(label(a))
+            verbuchen(*worker.auftrag(cfg, *a, debug))
+        worker._schliessen()
+        return angebote, fehler
 
-    threads = [threading.Thread(target=arbeiter, daemon=True) for _ in range(parallel)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    offen = list(auftraege)
+    with ProcessPoolExecutor(max_workers=parallel, mp_context=multiprocessing.get_context("spawn")) as pool:
+        futures = {pool.submit(worker.auftrag, cfg, *a, debug): a for a in auftraege}
+        for a in offen[:parallel]:
+            fortschritt.schritt_start(label(a))
+        for fut in as_completed(futures):
+            a = futures[fut]
+            try:
+                verbuchen(*fut.result())
+            except Exception as e:  # z. B. abgestürzter Arbeitsprozess
+                log.warning("%s: Arbeitsprozess fehlgeschlagen: %s", label(a), e)
+                verbuchen(a[0], a[1], [], f"{type(e).__name__}: Arbeitsprozess", 0.0)
+            offen.remove(a)
+            naechste = offen[parallel - 1] if len(offen) >= parallel else None
+            if naechste:
+                fortschritt.schritt_start(label(naechste))
     return angebote, fehler
 
 
