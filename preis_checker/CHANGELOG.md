@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+- Fix Check24 Internet: verzögert eingeblendetes Cookie-Banner („geht klar“) blockierte den Vergleichen-Button
+- Cookie-Banner allgemein robuster erkannt (wartet kurz, sucht auch Links/Buttons in Consent-Bereichen)
+
 ## 1.1.2
 - Ruhezeit (Standard 22:00–07:00, in den Einstellungen änderbar): keine Meldungen, weder Handy noch HA-Glocke
 - Meldungen aus der Ruhezeit werden zum Ende gesammelt verschickt (abschaltbar, dann verworfen)
