@@ -41,7 +41,11 @@ FIND_CARDS_JS = r"""
   if (best.length < 2) return [];
   return best.map(e => {
     const a = e.tagName === 'A' ? e : e.querySelector('a[href]');
-    return {text: e.innerText, href: a ? a.href : ''};
+    // Händler-Logos (Preisvergleiche zeigen den Shop oft nur als Bild)
+    const bilder = Array.from(e.querySelectorAll('img[alt], [title]'))
+      .map(x => x.getAttribute('alt') || x.getAttribute('title') || '')
+      .filter(x => x && x.length < 60).slice(0, 8);
+    return {text: e.innerText, href: a ? a.href : '', bilder};
   });
 }
 """

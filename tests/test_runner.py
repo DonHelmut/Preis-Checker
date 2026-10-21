@@ -53,3 +53,22 @@ def test_gesperrte_shops_pausieren(tmp_path, monkeypatch):
     a = [("x", "mindfactory", "u"), ("x", "otto", "u"), ("x", "geizhals", "u")]
     assert [s for _, s, _ in runner._ohne_gesperrte(cfg, a)] == ["otto", "geizhals"]
     assert runner._ohne_gesperrte({"produkte": {"sperre_pause_stunden": 0}}, a) == a
+
+
+def test_haendler_wird_gespeichert_und_alte_db_migriert(tmp_path, monkeypatch):
+    import sqlite3
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    # Datenbank im Stand vor 1.1 (ohne Spalte haendler)
+    con = sqlite3.connect(tmp_path / "preischecker.db")
+    con.execute("CREATE TABLE preise (id INTEGER PRIMARY KEY AUTOINCREMENT, zeit TEXT NOT NULL, suche TEXT NOT NULL,"
+                " shop TEXT NOT NULL, name TEXT, preis REAL NOT NULL, url TEXT, lieferbar INTEGER, aktion INTEGER,"
+                " alter_preis REAL)")
+    con.execute("INSERT INTO preise (zeit, suche, shop, name, preis) VALUES ('2026-10-20T10:00:00', 'X', 'amazon', 'X', 500)")
+    con.commit()
+    con.close()
+    db.preise_speichern("X", "2026-10-21T10:00:00", [{"shop": "geizhals", "haendler": "Alternate", "name": "X", "preis": 449.0}])
+    rows = db.preisverlauf("X")
+    assert [(r["shop"], r["haendler"]) for r in rows] == [("amazon", None), ("geizhals", "Alternate")]
+    from preischecker import analytics
+    assert analytics.bestpreis_reihe(rows)[-1]["haendler"] == "Alternate"
+    assert analytics.kennzahlen(rows)["tiefst_haendler"] == "Alternate"

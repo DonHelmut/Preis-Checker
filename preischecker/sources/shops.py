@@ -177,6 +177,84 @@ def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool
     return angebote
 
 
+VERGLEICHSPORTALE = {"geizhals", "idealo"}
+
+# Händler, die auf Preisvergleichs-Produktseiten auftauchen: Erkennungsmuster -> Anzeigename
+HAENDLER = [
+    (r"amazon", "Amazon"), (r"media\s?markt", "MediaMarkt"), (r"saturn", "Saturn"), (r"\botto\b", "Otto"),
+    (r"alternate", "Alternate"), (r"mindfactory", "Mindfactory"), (r"caseking", "Caseking"),
+    (r"cyberport", "Cyberport"), (r"notebooksbilliger|\bnbb\b", "notebooksbilliger"), (r"galaxus", "Galaxus"),
+    (r"proshop", "Proshop"), (r"computer\s?universe", "computeruniverse"), (r"jacob", "Jacob"),
+    (r"\barlt\b", "ARLT"), (r"kaufland", "Kaufland"), (r"\bexpert\b", "expert"), (r"euronics", "Euronics"),
+    (r"conrad", "Conrad"), (r"\bebay\b", "eBay"), (r"\blidl\b", "Lidl"), (r"coolblue", "Coolblue"),
+    (r"\bbaur\b", "BAUR"), (r"\bquelle\b", "Quelle"), (r"\btink\b", "tink"), (r"hardwarecamp", "Hardwarecamp24"),
+    (r"\bbora\b", "Bora Computer"), (r"\bcsv\b|csv-direct", "CSV-Direct"), (r"\bluxnote\b", "Luxnote"),
+    (r"\bdeltatecc\b", "Deltatecc"), (r"\bkmcomputer|km-computer", "KM Computer"), (r"\bhifi\.de|hifi-regler", "HiFi"),
+    (r"\bteufel\b", "Teufel"), (r"\bsonos\.com|\bsonos store", "Sonos"), (r"\bapple\.com|apple store", "Apple"),
+    (r"\bgamestop\b", "GameStop"), (r"\bmüller\b|mueller\.de", "Müller"), (r"\bnintendo store|my nintendo", "Nintendo"),
+]
+_HAENDLER_RX = [(re.compile(m, re.I), n) for m, n in HAENDLER]
+_DOMAIN = re.compile(r"\b([a-z0-9][a-z0-9-]{1,40})\.(de|com|at|eu|net|shop)\b", re.I)
+
+
+def haendler_aus_karte(card: dict) -> str | None:
+    """Händlername aus einer Angebotszeile eines Preisvergleichs (Text oder Logo-Alt-Text)."""
+    teile = [*(card.get("bilder") or []), card.get("text") or ""]
+    for teil in teile:
+        treffer = [(m.start(), n) for rx, n in _HAENDLER_RX for m in [rx.search(teil)] if m]
+        if treffer:
+            return min(treffer)[1]
+    for teil in teile:  # unbekannter Händler: Domain wie "foo-shop.de"
+        m = _DOMAIN.search(teil)
+        if m and m.group(1).lower() not in VERGLEICHSPORTALE:
+            return m.group(0)
+    return None
+
+
+def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict) -> tuple[str, float] | None:
+    """Produktseite eines Preisvergleichs öffnen und den günstigsten Händler auslesen."""
+    page.goto(angebot.url, wait_until="domcontentloaded")
+    if not b.schutzseite_abwarten(page, 10):
+        return None
+    b.accept_cookies(page)
+    cards = b.wait_for_cards(page, r"€|,[-–]", timeout_s=min(cfg["browser"].get("timeout_sekunden", 60), 20),
+                             min_len=15, min_cards=2)
+    zeilen = []
+    for c in cards:
+        p, h = preis(c["text"]), haendler_aus_karte(c)
+        if p is not None and h:
+            zeilen.append((p, h))
+    if not zeilen:
+        b.dump_debug(page, f"{angebot.shop}-haendler-{norm(angebot.name)[:24]}", cards)
+        return None
+    p, h = min(zeilen)
+    return h, p
+
+
+def haendler_ergaenzen(page, angebote: list[ProduktAngebot], artikel: dict, cfg: dict, anzahl: int = 1) -> None:
+    """Beim günstigsten passenden Preisvergleichs-Treffer den tatsächlichen Händler nachtragen."""
+    kandidaten = sorted((a for a in angebote if a.url and not a.url.startswith(("javascript:", "#"))
+                         and passt(a, artikel)),
+                        key=lambda a: a.preis)[:anzahl]
+    for a in kandidaten:
+        try:
+            ergebnis = haendler_ermitteln(page, a, cfg)
+        except Exception as e:
+            log.info("Händler für %s nicht ermittelbar: %s", a.name[:40], e)
+            continue
+        if ergebnis:
+            a.haendler, p = ergebnis
+            if abs(p - a.preis) <= max(2.0, a.preis * 0.05):  # gleiche Größenordnung → Händlerpreis übernehmen
+                a.preis = p
+
+
+def anbieter(a) -> str:
+    """Anzeigename: Shop, bei Preisvergleichen mit tatsächlichem Händler."""
+    shop = a["shop"] if isinstance(a, dict) else a.shop
+    h = a.get("haendler") if isinstance(a, dict) else getattr(a, "haendler", None)
+    return f"{h} (über {shop_name(shop)})" if h else shop_name(shop)
+
+
 def aktive_shops(cfg: dict) -> dict[str, str]:
     """Alle eingeschalteten Shops: key -> URL-Vorlage."""
     p = cfg["produkte"]

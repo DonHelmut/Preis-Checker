@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 
 from . import analytics, db
 from .ha import slug
-from .sources.shops import GRUPPEN_NAMEN, KATEGORIEN, SHOP_LISTE, SHOPS, aktive_shops, shop_name, shops_fuer
+from .sources.shops import (GRUPPEN_NAMEN, KATEGORIEN, SHOP_LISTE, SHOPS, aktive_shops, anbieter, shop_name,
+                            shops_fuer)
 
 MAX_SHOP_LINIEN = 7  # + Bestpreis = 8 Farben, mehr werden nicht gezeichnet
 
@@ -52,7 +53,7 @@ def produkt_detail(cfg: dict, artikel: dict) -> dict:
     ordnung = {s.key: i for i, s in enumerate(SHOP_LISTE)}
     gezeigt.sort(key=lambda s: ordnung.get(s, 999))
     serien = [{"key": "best", "name": "Bestpreis", "farbe": "best",
-               "punkte": [[p["zeit"], p["preis"], shop_name(p["shop"])] for p in reihe]}]
+               "punkte": [[p["zeit"], p["preis"], anbieter(p)] for p in reihe]}]
     for i, shop in enumerate(gezeigt):
         serien.append({"key": shop, "name": shop_name(shop), "farbe": f"s{i + 1}",
                        "punkte": [[p["zeit"], p["preis"]] for p in reihen.get(shop, [])]})

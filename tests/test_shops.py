@@ -75,7 +75,7 @@ def test_schnaeppchen_preisfehler_ein_shop():
 def test_meldetext():
     e = compare.produkt(CFG2, ART, [ProduktAngebot("RX 9070 XT", 520, "alternate", "https://x")], verlauf=[650] * 4)
     t = notify.produkt_text(e)
-    assert t.startswith("Schnäppchen: RX 9070 XT") and "520.00 € bei alternate" in t and "https://x" in t
+    assert t.startswith("Schnäppchen: RX 9070 XT") and "520.00 € bei Alternate" in t and "https://x" in t
 
 
 def test_relevanz_wortgenau():
@@ -123,3 +123,21 @@ def test_ablehnungsgruende_und_bundles():
 def test_galaxus_preisformat():
     assert preis("Sonos Beam Gen 2\n449.–\nMorgen geliefert") == 449.0
     assert preis("1.299.–") == 1299.0
+
+
+def test_haendler_aus_angebotszeile():
+    from preischecker.sources.shops import haendler_aus_karte
+    assert haendler_aus_karte({"text": "€ 449,00\nVersand ab € 4,99\nAlternate\nlagernd", "bilder": []}) == "Alternate"
+    assert haendler_aus_karte({"text": "€ 452,90\nauf Lager", "bilder": ["Händlerlogo MediaMarkt"]}) == "MediaMarkt"
+    assert haendler_aus_karte({"text": "459,00 €\nkaufen bei technik-shop24.de\n2-3 Werktage"}) == "technik-shop24.de"
+    assert haendler_aus_karte({"text": "Gesamtpreis 449,00 €\nzum Shop"}) is None
+    assert haendler_aus_karte({"text": "bei geizhals.de vergleichen 449,00 €"}) is None
+    # frühester Treffer im Text gewinnt, "Motto" ist nicht Otto
+    assert haendler_aus_karte({"text": "Motto-Deal\nCyberport 449,00 €\nauch bei Amazon"}) == "Cyberport"
+
+
+def test_anbieter_anzeige():
+    from preischecker.sources.shops import anbieter
+    assert anbieter({"shop": "geizhals", "haendler": "Alternate"}) == "Alternate (über Geizhals)"
+    assert anbieter({"shop": "amazon", "haendler": None}) == "Amazon"
+    assert anbieter(ProduktAngebot("x", 1, "idealo", haendler="Otto")) == "Otto (über idealo)"

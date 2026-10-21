@@ -16,7 +16,8 @@ def bestpreis_reihe(rows: list[dict]) -> list[dict]:
         b = laeufe.get(r["zeit"])
         if b is None or r["preis"] < b["preis"]:
             laeufe[r["zeit"]] = r
-    return [{"zeit": z, "preis": r["preis"], "shop": r["shop"]} for z, r in sorted(laeufe.items())]
+    return [{"zeit": z, "preis": r["preis"], "shop": r["shop"], "haendler": r.get("haendler")}
+            for z, r in sorted(laeufe.items())]
 
 
 def shop_reihen(rows: list[dict]) -> dict[str, list[dict]]:
@@ -35,7 +36,7 @@ def kennzahlen(rows: list[dict], zielpreis: float | None = None, jetzt: datetime
     reihe = bestpreis_reihe(rows)
     if not reihe:
         leer = dict.fromkeys(("seit", "aktuell", "aktuell_shop", "aenderung", "aenderung_prozent", "tiefst",
-                              "tiefst_zeit", "tiefst_shop", "hoechst", "hoechst_zeit", "schnitt30", "median90",
+                              "tiefst_zeit", "tiefst_shop", "tiefst_haendler", "hoechst", "hoechst_zeit", "schnitt30", "median90",
                               "gegen_schnitt_prozent", "schwankung_prozent", "spanne_prozent", "schwankung_stufe",
                               "trend_prozent", "perzentil", "bis_ziel"))
         return leer | {"messungen": 0, "zielpreis": zielpreis,
@@ -65,6 +66,7 @@ def kennzahlen(rows: list[dict], zielpreis: float | None = None, jetzt: datetime
         "aenderung": round(aktuell - vorher, 2) if vorher is not None else None,
         "aenderung_prozent": round((aktuell - vorher) / vorher * 100, 1) if vorher else None,
         "tiefst": tief["preis"], "tiefst_zeit": tief["zeit"], "tiefst_shop": tief["shop"],
+        "tiefst_haendler": tief.get("haendler"),
         "hoechst": hoch["preis"], "hoechst_zeit": hoch["zeit"],
         "schnitt30": round(schnitt30, 2),
         "median90": round(median(w90), 2),
@@ -110,7 +112,8 @@ def shop_vergleich(rows: list[dict]) -> list[dict]:
         akt = liste[-1]
         vor = liste[-2]["preis"] if len(liste) > 1 else None
         out.append({
-            "shop": shop, "preis": akt["preis"], "name": akt.get("name"), "url": akt.get("url"),
+            "shop": shop, "haendler": akt.get("haendler"), "preis": akt["preis"], "name": akt.get("name"),
+            "url": akt.get("url"),
             "aktion": bool(akt.get("aktion")), "zeit": akt["zeit"], "aktuell": akt["zeit"] == letzte_zeit,
             "aenderung": round(akt["preis"] - vor, 2) if vor is not None else None,
             "tiefst": min(r["preis"] for r in liste), "messungen": len(liste),

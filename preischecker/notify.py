@@ -5,6 +5,7 @@ import logging
 import urllib.request
 
 from . import ha
+from .sources.shops import anbieter
 
 log = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ def produkt_melden(cfg: dict, ergebnis: dict, vorher: dict | None) -> bool:
 def produkt_text(ergebnis: dict) -> str:
     best = ergebnis["angebote"][0]
     kopf = "Schnäppchen" if ergebnis.get("schnaeppchen") else "Zielpreis erreicht"
-    zeilen = [f"{kopf}: {ergebnis['suche']}", f"{best['preis']:.2f} € bei {best['shop']}"]
+    zeilen = [f"{kopf}: {ergebnis['suche']}", f"{best['preis']:.2f} € bei {anbieter(best)}"]
     if ergebnis.get("zielpreis"):
         zeilen[-1] += f" (Ziel {ergebnis['zielpreis']:.2f} €)"
     zeilen += ergebnis.get("gruende") or []
@@ -54,6 +55,7 @@ def senden_produkt(cfg: dict, ergebnis: dict, vorher: dict | None) -> None:
     best = ergebnis["angebote"][0]
     _verteilen(cfg, produkt_text(ergebnis), {
         "kategorie": "produkt", "suche": ergebnis["suche"], "preis": best["preis"], "shop": best["shop"],
+        "haendler": best.get("haendler"), "anbieter": anbieter(best),
         "url": best["url"], "name": best["name"], "schnaeppchen": ergebnis.get("schnaeppchen", False),
         "ziel_erreicht": ergebnis.get("ziel_erreicht", False), "gruende": ergebnis.get("gruende") or []})
 

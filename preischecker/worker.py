@@ -38,12 +38,18 @@ def _seite(cfg: dict):
     return _STAND["page"]
 
 
-def auftrag(cfg: dict, suche: str, shop: str, url: str, debug: bool = False
+def auftrag(cfg: dict, suche: str, shop: str, url: str, debug: bool = False, artikel: dict | None = None
             ) -> tuple[str, str, list[ProduktAngebot], str | None, float]:
-    """Einen Shop durchsuchen. Liefert (suche, shop, angebote, fehlertext, dauer)."""
+    """Einen Shop durchsuchen. Liefert (suche, shop, angebote, fehlertext, dauer).
+
+    Bei Preisvergleichen wird für den günstigsten passenden Treffer der echte Händler nachgeschlagen.
+    """
     t0 = time.time()
     try:
-        gefunden = shops.suchen(_seite(cfg), shop, url, suche, cfg, debug)
+        page = _seite(cfg)
+        gefunden = shops.suchen(page, shop, url, suche, cfg, debug)
+        if shop in shops.VERGLEICHSPORTALE and gefunden:
+            shops.haendler_ergaenzen(page, gefunden, artikel or {"suche": suche}, cfg)
         return suche, shop, gefunden, None, time.time() - t0
     except Exception as e:
         _schliessen()  # Browser im Zweifel frisch starten

@@ -14,7 +14,7 @@ from flask import Flask, abort, jsonify, redirect, render_template, request, sen
 from . import ansicht, ha, notify, runner, settings, worker
 from .sources import shops as shops_modul
 from .config import DATA_DIR, load_config, load_raw, save_raw
-from .sources.shops import GRUPPEN_NAMEN, KATEGORIEN, SHOP_LISTE, SHOPS, shop_name
+from .sources.shops import GRUPPEN_NAMEN, KATEGORIEN, SHOP_LISTE, SHOPS, anbieter, shop_name
 from .status import status_daten
 
 log = logging.getLogger(__name__)
@@ -84,7 +84,7 @@ def datum(z) -> str:
 def create_app(config_path=None) -> Flask:
     app = Flask(__name__)
     app.wsgi_app = IngressPrefix(app.wsgi_app)
-    app.jinja_env.globals.update(get=settings.get, anzeigen=settings.anzeigen, shop_name=shop_name,
+    app.jinja_env.globals.update(get=settings.get, anzeigen=settings.anzeigen, shop_name=shop_name, anbieter=anbieter,
                                  KATEGORIEN=KATEGORIEN)
     app.jinja_env.filters.update(eur=eur, prozent=prozent, zeit_rel=zeit_rel, datum=datum)
 
@@ -333,14 +333,16 @@ def create_app(config_path=None) -> Flask:
         def lauf():
             try:
                 with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
-                    _, _, gefunden, fehler, dauer = pool.submit(worker.auftrag, cfg, q, shop, urls[shop], True).result(timeout=180)
+                    _, _, gefunden, fehler, dauer = pool.submit(
+                        worker.auftrag, cfg, q, shop, urls[shop], True, artikel).result(timeout=240)
                 neuester = max((DATA_DIR / "debug").glob(f"{shop}-*"), key=lambda p: p.stat().st_mtime, default=None)
                 DIAGNOSEN[did] |= {
                     "status": "fertig", "fehler": fehler, "dauer": round(dauer, 1),
                     "seite": {"titel": _seitentitel(neuester / "seite.html"), "url": _lesen_datei(neuester / "url.txt"),
                               "kacheln": (_lesen_datei(neuester / "kacheln.txt") or "")[:3000]} if neuester else None,
                     "angebote": [{"name": a.name, "preis": a.preis, "lieferbar": a.lieferbar, "url": a.url,
-                                  "grund": shops_modul.ablehnungsgrund(a, artikel)} for a in gefunden]}
+                                  "haendler": a.haendler, "grund": shops_modul.ablehnungsgrund(a, artikel)}
+                                 for a in gefunden]}
             except Exception as e:
                 DIAGNOSEN[did] |= {"status": "fehler", "fehler": f"{type(e).__name__}: {e}"}
 

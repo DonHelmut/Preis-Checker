@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+- Geizhals/idealo: beim günstigsten passenden Treffer wird die Produktseite geöffnet und der tatsächliche Händler ausgelesen – Anzeige z. B. „Alternate (über Geizhals)“
+- Händler erscheint in Übersicht, Detailseite, Schnellsuche, HA-Sensor (`haendler`, `anzeige`) und Benachrichtigung
+- Datenbank speichert den Händler mit (bestehende Daten werden automatisch übernommen)
+
 ## 1.0.6
 - Diagnose läuft im Hintergrund (`/api/diagnose` → id, Ergebnis unter `/api/diagnose/<id>`)
 
