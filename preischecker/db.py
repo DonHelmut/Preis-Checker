@@ -38,7 +38,7 @@ def speichern(ergebnis: dict, fehler: str | None = None) -> None:
                 datetime.now().isoformat(timespec="seconds"),
                 ergebnis["kategorie"],
                 (ergebnis.get("aktuell") or {}).get("kosten_jahr"),
-                angebote[0]["kosten_jahr"] if angebote else None,
+                (angebote[0].get("kosten_jahr", angebote[0].get("preis")) if angebote else None),
                 ergebnis.get("beste_ersparnis_jahr"),
                 fehler,
                 json.dumps(ergebnis, ensure_ascii=False),

@@ -20,14 +20,14 @@ UA = (
 # Findet wiederholte Kacheln: Elemente mit Preis + Stichwort, die als
 # Geschwister unter demselben Eltern-Element liegen. Liefert deren innerText.
 FIND_CARDS_JS = r"""
-(keyword) => {
+({keyword, minLen}) => {
   const kw = new RegExp(keyword, 'i');
-  const price = /\d+[.,]\d{2}\s*€/;
+  const price = /(\d+[.,]\d{2}\s*€|€\s*\d+[.,]\d{2}|\d+,[-–])/;
   const els = Array.from(document.querySelectorAll('body *'));
   const cand = new Set();
   for (const el of els) {
     const t = el.innerText || '';
-    if (t.length < 60 || t.length > 4000) continue;
+    if (t.length < minLen || t.length > 4000) continue;
     if (!price.test(t) || !kw.test(t)) continue;
     cand.add(el);
   }
@@ -41,7 +41,11 @@ FIND_CARDS_JS = r"""
   for (const kids of byParent.values()) {
     if (kids.length > best.length) best = kids;
   }
-  return best.length >= 2 ? best.map(e => e.innerText) : [];
+  if (best.length < 2) return [];
+  return best.map(e => {
+    const a = e.tagName === 'A' ? e : e.querySelector('a[href]');
+    return {text: e.innerText, href: a ? a.href : ''};
+  });
 }
 """
 
@@ -127,23 +131,26 @@ def submit(page: Page) -> None:
         page.keyboard.press("Enter")
 
 
-def wait_for_cards(page: Page, keyword: str, timeout_s: int = 60) -> list[str]:
+def wait_for_cards(page: Page, keyword: str, timeout_s: int = 60, min_len: int = 60,
+                   min_cards: int = 3) -> list[dict]:
+    """Liefert [{"text": ..., "href": ...}] der erkannten Ergebnis-Kacheln."""
+    arg = {"keyword": keyword, "minLen": min_len}
     deadline = time.time() + timeout_s
-    cards: list[str] = []
+    cards: list[dict] = []
     while time.time() < deadline:
-        cards = page.evaluate(FIND_CARDS_JS, keyword)
-        if len(cards) >= 3:
+        cards = page.evaluate(FIND_CARDS_JS, arg)
+        if len(cards) >= min_cards:
             break
         page.wait_for_timeout(1500)
     # Nachladen durch Scrollen
     for _ in range(4):
         page.mouse.wheel(0, 4000)
         page.wait_for_timeout(1200)
-    more = page.evaluate(FIND_CARDS_JS, keyword)
+    more = page.evaluate(FIND_CARDS_JS, arg)
     return more if len(more) > len(cards) else cards
 
 
-def dump_debug(page: Page, name: str, cards: list[str]) -> Path:
+def dump_debug(page: Page, name: str, cards: list[dict]) -> Path:
     out = DATA_DIR / "debug" / f"{name}-{datetime.now():%Y%m%d-%H%M%S}"
     out.mkdir(parents=True, exist_ok=True)
     try:
@@ -152,7 +159,7 @@ def dump_debug(page: Page, name: str, cards: list[str]) -> Path:
         pass
     (out / "seite.html").write_text(page.content(), encoding="utf-8")
     (out / "url.txt").write_text(page.url, encoding="utf-8")
-    (out / "kacheln.txt").write_text("\n\n=====\n\n".join(cards), encoding="utf-8")
+    (out / "kacheln.txt").write_text("\n\n=====\n\n".join(f"{c['href']}\n{c['text']}" for c in cards), encoding="utf-8")
     (out / "json.json").write_text(
         json.dumps(getattr(page, "_json_responses", []), ensure_ascii=False, indent=1, default=str)[:20_000_000],
         encoding="utf-8",

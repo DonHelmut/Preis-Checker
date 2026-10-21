@@ -25,13 +25,27 @@ def text_fuer(ergebnis: dict) -> str:
     return "\n".join(zeilen)
 
 
-def senden(cfg: dict, ergebnis: dict) -> None:
-    schwelle = cfg["pruefung"].get("benachrichtigen_ab_euro_jahr", 50)
-    ersparnis = ergebnis.get("beste_ersparnis_jahr")
-    if ersparnis is None or ersparnis < schwelle:
+def produkt_melden(cfg: dict, ergebnis: dict, vorher: dict | None) -> bool:
+    """Melden, wenn Zielpreis erstmals erreicht oder neuer Tiefstpreis darunter."""
+    if not ergebnis.get("ziel_erreicht"):
+        return False
+    alt = (vorher or {}).get("bester_preis")
+    return not (vorher or {}).get("ziel_erreicht") or alt is None or ergebnis["bester_preis"] < alt
+
+
+def senden_produkt(cfg: dict, ergebnis: dict, vorher: dict | None) -> None:
+    if not produkt_melden(cfg, ergebnis, vorher):
         return
+    best = ergebnis["angebote"][0]
+    text = (f"Zielpreis erreicht: {ergebnis['suche']}\n"
+            f"{best['preis']:.2f} € bei {best['shop']} (Ziel {ergebnis['zielpreis']:.2f} €)\n"
+            f"{best['name']}\n{best['url']}")
+    _verteilen(cfg, text, {"kategorie": "produkt", "suche": ergebnis["suche"], "preis": best["preis"],
+                           "shop": best["shop"], "url": best["url"], "name": best["name"]})
+
+
+def _verteilen(cfg: dict, text: str, payload: dict) -> None:
     n = cfg["benachrichtigung"]
-    text = text_fuer(ergebnis)
     try:
         if n.get("telegram_bot_token") and n.get("telegram_chat_id"):
             _post(
@@ -40,10 +54,18 @@ def senden(cfg: dict, ergebnis: dict) -> None:
                 {"Content-Type": "application/json"},
             )
         if n.get("ntfy_topic"):
-            _post(f"https://ntfy.sh/{n['ntfy_topic']}", text.encode(), {"Title": "Preis-Checker"})
+            _post(f"https://ntfy.sh/{n['ntfy_topic']}", text.encode("utf-8"), {"Title": "Preis-Checker"})
         if n.get("webhook_url"):
-            payload = {"text": text, "kategorie": ergebnis["kategorie"], "ersparnis_jahr": ersparnis,
-                       "bestes_angebot": {k: ergebnis["angebote"][0].get(k) for k in ("anbieter", "tarif", "kosten_jahr")}}
-            _post(n["webhook_url"], json.dumps(payload).encode(), {"Content-Type": "application/json"})
+            _post(n["webhook_url"], json.dumps({"text": text, **payload}).encode(), {"Content-Type": "application/json"})
     except Exception as e:  # Benachrichtigung darf den Lauf nicht abbrechen
         log.error("Benachrichtigung fehlgeschlagen: %s", e)
+
+
+def senden(cfg: dict, ergebnis: dict) -> None:
+    schwelle = cfg["pruefung"].get("benachrichtigen_ab_euro_jahr", 50)
+    ersparnis = ergebnis.get("beste_ersparnis_jahr")
+    if ersparnis is None or ersparnis < schwelle:
+        return
+    text = text_fuer(ergebnis)
+    _verteilen(cfg, text, {"kategorie": ergebnis["kategorie"], "ersparnis_jahr": ersparnis,
+                           "bestes_angebot": {k: ergebnis["angebote"][0].get(k) for k in ("anbieter", "tarif", "kosten_jahr")}})

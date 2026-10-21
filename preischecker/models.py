@@ -69,3 +69,16 @@ class InternetAngebot:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@dataclass
+class ProduktAngebot:
+    name: str
+    preis: float
+    shop: str
+    url: str = ""
+    lieferbar: bool | None = None  # None = unbekannt
+    rohtext: str = field(default="", repr=False)
+
+    def to_dict(self) -> dict:
+        return asdict(self)

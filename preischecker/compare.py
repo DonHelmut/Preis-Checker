@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from .models import InternetAngebot, StromAngebot
+from .models import InternetAngebot, ProduktAngebot, StromAngebot
 
 
 def kuendigen_bis(vertrag: dict) -> str | None:
@@ -61,4 +61,29 @@ def internet(cfg: dict, angebote: list[InternetAngebot]) -> dict:
                     "kosten_jahr": aktuell, "kuendigen_bis": kuendigen_bis(v)},
         "angebote": rows,
         "beste_ersparnis_jahr": rows[0]["ersparnis_jahr"] if rows else None,
+    }
+
+
+def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot]) -> dict:
+    from .sources.shops import passt
+    nur_lieferbar = cfg["produkte"].get("nur_lieferbar", True)
+    beste: dict[tuple, dict] = {}
+    for a in angebote:
+        if not passt(a, artikel) or (nur_lieferbar and a.lieferbar is False):
+            continue
+        key = (a.shop, a.name.lower())
+        if key not in beste or a.preis < beste[key]["preis"]:
+            row = a.to_dict()
+            row.pop("rohtext")
+            beste[key] = row
+    rows = sorted(beste.values(), key=lambda r: r["preis"])
+    ziel = artikel.get("zielpreis")
+    return {
+        "kategorie": f"produkt:{artikel['suche']}",
+        "suche": artikel["suche"],
+        "zielpreis": ziel,
+        "aktuell": {"kosten_jahr": None},
+        "angebote": rows,
+        "bester_preis": rows[0]["preis"] if rows else None,
+        "ziel_erreicht": bool(rows and ziel and rows[0]["preis"] <= ziel),
     }

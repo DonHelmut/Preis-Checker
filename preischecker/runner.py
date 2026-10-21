@@ -4,7 +4,7 @@ import logging
 import threading
 
 from . import compare, db, notify
-from .sources import check24
+from .sources import browser, check24, shops
 
 log = logging.getLogger(__name__)
 _lock = threading.Lock()
@@ -21,8 +21,14 @@ def pruefen(cfg: dict, kategorien: list[str] | None = None, debug: bool = False)
         return []
     try:
         ergebnisse = []
-        for kat in kategorien or list(QUELLEN):
-            if not cfg[kat].get("aktiv"):
+        kategorien = kategorien or [*QUELLEN, "produkte"]
+        if "produkte" in kategorien and cfg["produkte"].get("aktiv"):
+            try:
+                ergebnisse += produkte_pruefen(cfg, debug)
+            except Exception:
+                log.exception("Produktprüfung fehlgeschlagen")
+        for kat in kategorien:
+            if kat == "produkte" or not cfg[kat].get("aktiv"):
                 continue
             holen, vergleichen = QUELLEN[kat]
             try:
@@ -39,6 +45,28 @@ def pruefen(cfg: dict, kategorien: list[str] | None = None, debug: bool = False)
         return ergebnisse
     finally:
         _lock.release()
+
+
+def produkte_pruefen(cfg: dict, debug: bool = False) -> list[dict]:
+    ergebnisse = []
+    quellen = shops.alle_shops(cfg)
+    with browser.browser_page(cfg) as page:
+        for artikel in cfg["produkte"].get("liste") or []:
+            angebote, fehler = [], []
+            for shop, url in quellen.items():
+                try:
+                    angebote += shops.suchen(page, shop, url, artikel["suche"], cfg, debug)
+                except Exception as e:
+                    log.warning("%s / %s fehlgeschlagen: %s", shop, artikel["suche"], e)
+                    fehler.append(f"{shop}: {type(e).__name__}")
+            ergebnis = compare.produkt(cfg, artikel, angebote)
+            if not ergebnis["angebote"]:
+                fehler.append("Keine passenden Angebote")
+            vorher = db.letzte(ergebnis["kategorie"])
+            db.speichern(ergebnis, "; ".join(fehler) or None)
+            notify.senden_produkt(cfg, ergebnis, vorher)
+            ergebnisse.append({**ergebnis, "fehler": "; ".join(fehler) or None})
+    return ergebnisse
 
 
 def laeuft() -> bool:

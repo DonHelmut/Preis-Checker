@@ -1,7 +1,9 @@
 # Preis-Checker
 
-Vergleicht die eigenen Strom- und Internetverträge regelmäßig mit aktuellen Check24-Angeboten.
-Zeigt, was günstiger ist, und meldet sich (Telegram / ntfy / Home-Assistant-Webhook), wenn sich ein Wechsel lohnt.
+- **Verträge**: eigene Strom- und Internetverträge regelmäßig mit aktuellen Check24-Angeboten vergleichen.
+- **Produkte**: Suchbegriffe (z. B. „Nintendo Switch 2“, „RX 9070 XT“) bei Geizhals, Alternate, Mindfactory (+ eigene Shops) beobachten, günstigsten Preis finden, Preisalarm bei Zielpreis.
+
+Meldet sich per Telegram / ntfy / Home-Assistant-Webhook, wenn sich ein Wechsel lohnt oder der Zielpreis erreicht ist.
 
 - Check24 hat keine öffentliche API → das Tool öffnet die Webseite per Headless-Chromium (Playwright), füllt das Formular aus und liest die Ergebnis-Kacheln.
 - Läuft am besten auf einer privaten VM/LXC (private IP, Datacenter-IPs werden oft geblockt).
@@ -34,8 +36,8 @@ python -m preischecker serve            # Weboberfläche + Prüfung alle interva
 
 | Befehl | Zweck |
 |---|---|
-| `pruefen [strom] [internet]` | Einmal prüfen, Ergebnis ausgeben + speichern |
-| `debug [strom] [internet]` | Wie `pruefen`, speichert zusätzlich Screenshot, HTML, erkannte Kacheln unter `data/debug/` |
+| `pruefen [strom] [internet] [produkte]` | Einmal prüfen, Ergebnis ausgeben + speichern |
+| `debug [strom] [internet] [produkte]` | Wie `pruefen`, speichert zusätzlich Screenshot, HTML, erkannte Kacheln unter `data/debug/` |
 | `serve` | Weboberfläche (Port 8080) + Scheduler |
 | `test-benachrichtigung` | Testnachricht an alle Kanäle |
 
@@ -46,6 +48,18 @@ In Docker: `docker compose exec preischecker python -m preischecker debug strom`
 - **Strom**: Verbrauch × Arbeitspreis + 12 × Grundpreis. Bonus nur bei `bonus_einrechnen: true` (gilt nur im 1. Jahr).
 - **Internet**: Ø-Monatspreis über die Mindestlaufzeit (Aktionsmonate + reguläre Monate + Anschlussgebühr − Bonus) × 12, verglichen mit dem aktuellen Monatspreis × 12.
 - „Kündigen bis“ = Vertragsende − Kündigungsfrist.
+- **Produkte**: günstigster Treffer über alle Quellen (Preis ohne Versand). Treffer zählt nur, wenn alle Wörter aus `suche` (oder `muss_enthalten`) im Namen stehen, kein Wort aus `darf_nicht_enthalten`, Preis zwischen `min_preis`/`max_preis`. Nicht lieferbare werden bei `nur_lieferbar: true` ausgeblendet.
+- Produkt-Meldung: wenn Zielpreis erstmals erreicht oder darunter ein neuer Tiefstpreis auftaucht (kein tägliches Wiederholen).
+
+## Weitere Shops
+
+```yaml
+produkte:
+  eigene_shops:
+    caseking: "https://www.caseking.de/search?search={q}"
+    cyberport: "https://www.cyberport.de/tools/search-results.html?q={q}"
+```
+`{q}` = Suchbegriff. URL = Suchergebnisseite des Shops (im Browser einmal suchen, URL kopieren, Suchwort durch `{q}` ersetzen).
 
 ## Wenn keine Angebote erkannt werden
 

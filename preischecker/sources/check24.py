@@ -21,7 +21,7 @@ STROM_ERGEBNIS = "https://www.check24.de/strom/vergleich/check24/"
 DSL_START = "https://www.check24.de/dsl/"
 
 
-def _strom_cards(page, cfg: dict) -> list[str]:
+def _strom_cards(page, cfg: dict) -> list[dict]:
     ort = cfg["standort"]
     kwh = str(cfg["strom"]["verbrauch_kwh"])
     timeout = cfg["browser"].get("timeout_sekunden", 60)
@@ -43,7 +43,7 @@ def _strom_cards(page, cfg: dict) -> list[str]:
     return b.wait_for_cards(page, r"kWh|Arbeitspreis", timeout_s=timeout)
 
 
-def _dsl_cards(page, cfg: dict) -> list[str]:
+def _dsl_cards(page, cfg: dict) -> list[dict]:
     ort = cfg["standort"]
     timeout = cfg["browser"].get("timeout_sekunden", 60)
     page.goto(DSL_START)
@@ -67,7 +67,7 @@ def _run(cfg: dict, kind: str, debug: bool):
         except Exception:
             b.dump_debug(page, f"check24-{kind}-fehler", [])
             raise
-        offers = [o for o in (parse(c, quelle="check24") for c in cards) if o]
+        offers = [o for o in (parse(c["text"], quelle="check24") for c in cards) if o]
         if debug or not offers:
             path = b.dump_debug(page, f"check24-{kind}", cards)
             log.warning("Check24 %s: %d Kacheln, %d Angebote erkannt. Debug: %s", kind, len(cards), len(offers), path)

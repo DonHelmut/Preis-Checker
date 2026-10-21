@@ -22,7 +22,14 @@ def create_app(config_path=None) -> Flask:
         for kat in ("strom", "internet"):
             if cfg[kat].get("aktiv"):
                 daten[kat] = {"letzte": db.letzte(kat), "verlauf": db.verlauf(kat)}
-        return render_template("index.html", daten=daten, laeuft=runner.laeuft())
+        produkte = []
+        if cfg["produkte"].get("aktiv"):
+            for artikel in cfg["produkte"].get("liste") or []:
+                kat = f"produkt:{artikel['suche']}"
+                verlauf = [v["bestes_jahr"] for v in db.verlauf(kat, 365) if v["bestes_jahr"] is not None]
+                produkte.append({"artikel": artikel, "letzte": db.letzte(kat),
+                                 "tiefst": min(verlauf) if verlauf else None})
+        return render_template("index.html", daten=daten, produkte=produkte, laeuft=runner.laeuft())
 
     @app.post("/pruefen")
     def pruefen():

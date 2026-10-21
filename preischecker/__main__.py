@@ -8,6 +8,14 @@ from .config import load_config
 
 
 def _ausgabe(ergebnis: dict) -> None:
+    if ergebnis["kategorie"].startswith("produkt:"):
+        ziel = f" (Ziel {ergebnis['zielpreis']:.2f} €)" if ergebnis.get("zielpreis") else ""
+        print(f"\n== {ergebnis['suche']}{ziel} ==")
+        if ergebnis.get("fehler"):
+            print(f"Hinweis: {ergebnis['fehler']}")
+        for a in ergebnis["angebote"][:8]:
+            print(f"  {a['preis']:>9.2f} €  {a['shop']:<12} {a['name'][:70]}")
+        return
     akt = ergebnis["aktuell"]
     print(f"\n== {ergebnis['kategorie'].upper()} ==")
     print(f"Aktuell: {akt.get('anbieter')} {akt.get('tarif') or ''}: {akt['kosten_jahr']:.2f} €/Jahr")
@@ -25,9 +33,9 @@ def main() -> None:
     p.add_argument("-v", "--verbose", action="store_true")
     sub = p.add_subparsers(dest="cmd", required=True)
     run = sub.add_parser("pruefen", help="Einmal prüfen und Ergebnis ausgeben")
-    run.add_argument("kategorie", nargs="*", choices=["strom", "internet"])
+    run.add_argument("kategorie", nargs="*", choices=["strom", "internet", "produkte"])
     dbg = sub.add_parser("debug", help="Prüfen und Seite/Kacheln nach data/debug/ speichern")
-    dbg.add_argument("kategorie", nargs="*", choices=["strom", "internet"])
+    dbg.add_argument("kategorie", nargs="*", choices=["strom", "internet", "produkte"])
     srv = sub.add_parser("serve", help="Weboberfläche + regelmäßige Prüfung")
     srv.add_argument("--host", default="0.0.0.0")
     srv.add_argument("--port", type=int, default=8080)

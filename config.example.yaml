@@ -34,6 +34,22 @@ internet:
     max_laufzeit_monate: 24
     bonus_einrechnen: true    # Bonus/Startguthaben auf Laufzeit umlegen
 
+produkte:
+  aktiv: true
+  quellen: [geizhals, alternate, mindfactory]   # Geizhals deckt fast alle DE-Shops ab
+  nur_lieferbar: true
+  # eigene_shops:                               # weitere Shops, {q} = Suchbegriff
+  #   caseking: "https://www.caseking.de/search?search={q}"
+  liste:
+    - suche: "Nintendo Switch 2"
+      zielpreis: 430
+      min_preis: 300                 # filtert Zubehör (Hüllen, Spiele ...)
+      darf_nicht_enthalten: ["hülle", "tasche", "schutzfolie", "controller", "bundle"]
+    - suche: "RX 9070 XT"
+      zielpreis: 600
+      min_preis: 450
+      # muss_enthalten: ["9070", "xt"]   # Standard: alle Wörter aus "suche"
+
 pruefung:
   intervall_stunden: 24
   benachrichtigen_ab_euro_jahr: 50   # Meldung, wenn Ersparnis >= diesem Betrag
