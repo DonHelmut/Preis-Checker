@@ -64,11 +64,16 @@ def produkt_detail(cfg: dict, artikel: dict) -> dict:
 def shop_uebersicht(cfg: dict) -> list[dict]:
     status = db.shop_status_alle()
     aktiv = aktive_shops(cfg)
+    pause = float(cfg["produkte"].get("sperre_pause_stunden", 12))
+    gesperrt = db.gesperrte_shops(pause)
     out = []
     for s in SHOP_LISTE:
         st = status.get(s.key)
         if not st:
             zustand, text = "unbekannt", "Noch nicht abgefragt"
+        elif s.key in gesperrt:
+            bis = datetime.fromisoformat(gesperrt[s.key]) + timedelta(hours=pause)
+            zustand, text = "fehler", f"Bot-Sperre · pausiert bis {bis:%H:%M}"
         elif not st["ok"]:
             from .runner import fehler_kurz
             zustand, text = "fehler", fehler_kurz(st["fehler"] or "Fehler").capitalize()

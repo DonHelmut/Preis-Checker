@@ -151,9 +151,17 @@ def pruefen(cfg: dict, kategorien: list[str] | None = None, debug: bool = False)
         _lock.release()
 
 
+def _ohne_gesperrte(cfg: dict, auftraege: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+    """Gesperrte Shops eine Weile auslassen, statt sie immer wieder anzufragen."""
+    gesperrt = db.gesperrte_shops(float(cfg["produkte"].get("sperre_pause_stunden", 12)))
+    if gesperrt:
+        log.info("Pausiert wegen Bot-Sperre: %s", ", ".join(sorted(gesperrt)))
+    return [a for a in auftraege if a[1] not in gesperrt]
+
+
 def produkte_pruefen(cfg: dict, debug: bool = False) -> list[dict]:
     liste = cfg["produkte"].get("liste") or []
-    auftraege = [(a["suche"], shop, url) for a in liste for shop, url in shops.shops_fuer(cfg, a).items()]
+    auftraege = _ohne_gesperrte(cfg, [(a["suche"], shop, url) for a in liste for shop, url in shops.shops_fuer(cfg, a).items()])
     FORTSCHRITT.beginnen(len(auftraege), "Produktpreise")
     angebote, fehler = sammeln(cfg, auftraege, FORTSCHRITT, debug)
     zeit = datetime.now().isoformat(timespec="seconds")
@@ -177,7 +185,7 @@ def produkte_pruefen(cfg: dict, debug: bool = False) -> list[dict]:
 def schnellsuche(cfg: dict, artikel: dict, fortschritt: Fortschritt | None = None) -> dict:
     """Einmalige Suche ohne Speichern/Benachrichtigen."""
     fortschritt = fortschritt or Fortschritt()
-    auftraege = [(artikel["suche"], shop, url) for shop, url in shops.shops_fuer(cfg, artikel).items()]
+    auftraege = _ohne_gesperrte(cfg, [(artikel["suche"], shop, url) for shop, url in shops.shops_fuer(cfg, artikel).items()])
     fortschritt.beginnen(len(auftraege), "Schnellsuche")
     angebote, fehler = sammeln(cfg, auftraege, fortschritt, status_speichern=False)
     fortschritt.beenden()

@@ -56,3 +56,14 @@ def test_parallele_prozesse_ohne_vermischung(tmp_path, monkeypatch):
             je_shop.setdefault(a.shop, []).append(a.preis)
         assert {k: min(v) for k, v in je_shop.items()} == {"shop_a": 400, "shop_b": 500, "shop_c": 600}
     assert f.fertig == 6
+
+
+def test_turnstile_captcha_gilt_als_sperre(tmp_path):
+    from preischecker.sources import browser as b
+    (tmp_path / "cap.html").write_text('<html><body><form id="captcha_form"><div class="cf-turnstile"></div>'
+                                      '<button>I am human</button></form></body></html>')
+    with b.browser_page({"browser": {"timeout_sekunden": 5}}) as page:
+        page.goto(f"file://{tmp_path}/cap.html")
+        assert b.schutzseite_abwarten(page, 2) is False
+        page.set_content("<html><head><title>Suche</title></head><body>ok</body></html>")
+        assert b.schutzseite_abwarten(page, 2) is True
