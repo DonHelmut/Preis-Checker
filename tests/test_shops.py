@@ -141,3 +141,16 @@ def test_anbieter_anzeige():
     assert anbieter({"shop": "geizhals", "haendler": "Alternate"}) == "Alternate (über Geizhals)"
     assert anbieter({"shop": "amazon", "haendler": None}) == "Amazon"
     assert anbieter(ProduktAngebot("x", 1, "idealo", haendler="Otto")) == "Otto (über idealo)"
+
+
+def test_nettopreise_werden_hochgerechnet():
+    # Conrad für Geschäftskunden: 402,52 € zzgl. MwSt. = 479,00 € für Privatkunden
+    conrad_b2b = "Nintendo Switch 2 256 GB Schwarz\nGesamt (402,52 € / Stück)\n402,52 €\nzzgl. MwSt. & Kostenfreier Versand"
+    assert preis(conrad_b2b) == 479.0
+    conrad_privat = "Nintendo Switch 2 256 GB Schwarz\nGesamt (479,00 € / Stück)\n479,00 €\ninkl. MwSt. & Kostenfreier Versand"
+    assert preis(conrad_privat) == 479.0
+    # Beide angegeben → Bruttopreis
+    assert preis("Sonos Beam Gen 2\n377,31 € netto\n449,00 € inkl. MwSt.") == 449.0
+    assert preis("RX 9070 XT\n699,00 € exkl. MwSt.\n831,81 € brutto") == 831.81
+    # „zzgl. Versand“ ist kein Nettopreis
+    assert preis("Sonos Beam Gen 2\n449,00 €\nzzgl. Versand 4,99 €") == 449.0

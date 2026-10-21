@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, url_for
 
-from . import ansicht, ha, notify, runner, settings, worker
+from . import ansicht, db, ha, notify, runner, settings, worker
 from .sources import shops as shops_modul
 from .config import DATA_DIR, load_config, load_raw, save_raw
 from .sources.shops import GRUPPEN_NAMEN, KATEGORIEN, SHOP_LISTE, SHOPS, anbieter, shop_name
@@ -303,6 +303,14 @@ def create_app(config_path=None) -> Flask:
         _mischen(cfg, neu)
         save_raw(cfg, config_path)
         return jsonify(cfg)
+
+    @app.post("/api/daten/shop-entfernen")
+    def api_shop_daten_entfernen():
+        """Gespeicherte Preise eines Shops löschen, z. B. nach falsch gelesenen Preisen. Body: {"shop": "…"}"""
+        shop = (request.get_json(force=True, silent=True) or {}).get("shop", "")
+        if not shop:
+            return jsonify({"fehler": "shop angeben"}), 400
+        return jsonify(db.shop_daten_entfernen(shop))
 
     @app.post("/api/pruefen")
     def api_pruefen():

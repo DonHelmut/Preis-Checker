@@ -72,3 +72,22 @@ def test_haendler_wird_gespeichert_und_alte_db_migriert(tmp_path, monkeypatch):
     from preischecker import analytics
     assert analytics.bestpreis_reihe(rows)[-1]["haendler"] == "Alternate"
     assert analytics.kennzahlen(rows)["tiefst_haendler"] == "Alternate"
+
+
+def test_shop_daten_entfernen(tmp_path, monkeypatch):
+    from preischecker import compare
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    cfg = {"produkte": {"nur_lieferbar": True}}
+    art = {"suche": "Switch 2", "zielpreis": 430}
+    e = compare.produkt(cfg, art, [ProduktAngebot("Switch 2 schwarz", 402.52, "conrad"),
+                                   ProduktAngebot("Switch 2 schwarz", 478.99, "kaufland")])
+    assert e["ziel_erreicht"] and e["bester_shop"] == "conrad"
+    db.speichern(e)
+    db.preise_speichern("Switch 2", "2026-10-21T22:00:00", e["angebote"])
+    r = db.shop_daten_entfernen("conrad")
+    assert r == {"preise_geloescht": 1, "ergebnisse_korrigiert": 1}
+    letzte = db.letzte("produkt:Switch 2")
+    assert letzte["bester_preis"] == 478.99 and letzte["bester_shop"] == "kaufland"
+    assert not letzte["ziel_erreicht"] and not letzte["schnaeppchen"]
+    assert [x["shop"] for x in db.preisverlauf("Switch 2")] == ["kaufland"]
+    assert db.verlauf("produkt:Switch 2")[-1]["bestes_jahr"] == 478.99

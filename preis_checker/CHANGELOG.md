@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+- Fix: Nettopreise für Geschäftskunden („zzgl. MwSt.“, z. B. Conrad) werden mit 19 % MwSt. auf den Endpreis gerechnet; stehen Netto und Brutto da, zählt Brutto
+- Neu: `/api/daten/shop-entfernen` löscht falsch gelesene Preise eines Shops und bewertet gespeicherte Ergebnisse neu
+
 ## 1.1.0
 - Geizhals/idealo: beim günstigsten passenden Treffer wird die Produktseite geöffnet und der tatsächliche Händler ausgelesen – Anzeige z. B. „Alternate (über Geizhals)“
 - Händler erscheint in Übersicht, Detailseite, Schnellsuche, HA-Sensor (`haendler`, `anzeige`) und Benachrichtigung
