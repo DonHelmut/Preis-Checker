@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from datetime import datetime
 
-from flask import Flask, jsonify, redirect, render_template, url_for
+from flask import Flask, jsonify, redirect, render_template, request, url_for
 
 from . import db, runner
-from .config import load_config
+from .config import DATA_DIR, load_config
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ def create_app(config_path=None) -> Flask:
                 verlauf = [v["bestes_jahr"] for v in db.verlauf(kat, 365) if v["bestes_jahr"] is not None]
                 produkte.append({"artikel": artikel, "letzte": db.letzte(kat),
                                  "tiefst": min(verlauf) if verlauf else None})
-        return render_template("index.html", daten=daten, produkte=produkte, laeuft=runner.laeuft())
+        return render_template("index.html", daten=daten, produkte=produkte, laeuft=runner.laeuft(),
+                               version=version_info())
 
     @app.post("/pruefen")
     def pruefen():
@@ -59,7 +61,35 @@ def create_app(config_path=None) -> Flask:
         return jsonify({kat: db.letzte(kat) for kat in ("strom", "internet")}
                        | {"produkte": produkte, "laeuft": runner.laeuft()})
 
+    @app.post("/api/update")
+    def update_anfordern():
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        (DATA_DIR / "update.status").write_text("angefordert", encoding="utf-8")
+        (DATA_DIR / "update.request").write_text(datetime.now().isoformat(), encoding="utf-8")
+        if request.accept_mimetypes.accept_html and not request.is_json:
+            return redirect(url_for("index"))
+        return jsonify({"update": "angefordert"})
+
+    @app.get("/api/update/status")
+    def update_status():
+        return (_lesen("update.status") or "unbekannt"), 200, {"Content-Type": "text/plain; charset=utf-8"}
+
+    @app.get("/api/version")
+    def version():
+        return jsonify(version_info())
+
     return app
+
+
+def _lesen(name: str) -> str | None:
+    try:
+        return (DATA_DIR / name).read_text(encoding="utf-8").strip() or None
+    except OSError:
+        return None
+
+
+def version_info() -> dict:
+    return {"version": _lesen("version.txt"), "update": _lesen("update.status")}
 
 
 def scheduler(config_path=None) -> None:

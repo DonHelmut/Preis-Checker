@@ -32,6 +32,22 @@ python -m preischecker pruefen          # einmal prüfen, Ergebnis im Terminal
 python -m preischecker serve            # Weboberfläche + Prüfung alle intervall_stunden
 ```
 
+## Updates per Klick
+
+Einmalig auf der VM:
+```bash
+sudo ./deploy/install-updater.sh
+```
+Danach aktualisieren über:
+- **Dashboard**: Button „Aktualisieren“ unten
+- **Windows**: `windows/Aktualisieren.bat` auf den PC kopieren, IP oben eintragen, doppelklicken
+- **Home Assistant**: `rest_command` → `POST http://<vm-ip>:8080/api/update`
+- **Terminal**: `./deploy/update.sh` (`--force` baut auch ohne neue Commits neu)
+
+Ablauf: Anfrage legt `data/update.request` an → systemd startet `deploy/update.sh` → `git pull` + `docker compose up -d --build`.
+Log: `data/update.log`, Stand: `GET /api/version`. Die eigene `config.yaml` bleibt unberührt.
+Ist das GitHub-Repo privat, braucht `git pull` auf der VM Zugangsdaten (Deploy-Key oder Token).
+
 ## Befehle
 
 | Befehl | Zweck |

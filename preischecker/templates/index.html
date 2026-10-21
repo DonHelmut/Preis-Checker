@@ -129,6 +129,12 @@ a { color:var(--accent); }
   {% endif %}
 </section>
 {% endfor %}
+<footer class="muted" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px">
+  <span>Version: {{ version.version or "unbekannt" }}{% if version.update %} · Update: {{ version.update }}{% endif %}</span>
+  <form method="post" action="/api/update" onsubmit="return confirm('Von GitHub aktualisieren und neu starten?')">
+    <button style="background:var(--muted)">Aktualisieren</button>
+  </form>
+</footer>
 </main>
 </body>
 </html>

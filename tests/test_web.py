@@ -62,3 +62,17 @@ def test_api_anzeige(tmp_path, monkeypatch):
     p = app.get("/api/status").get_json()["produkte"]["Switch 2"]
     assert p["anzeige"] == "449,90 € bei geizhals" and p["aktion"] is True
     assert "Aktion" in app.get("/").get_data(as_text=True)
+
+
+def test_update_anfordern(tmp_path, monkeypatch):
+    from preischecker import web
+    monkeypatch.setattr(web, "DATA_DIR", tmp_path)
+    cfg_path = tmp_path / "config.yaml"
+    cfg_path.write_text("{}")
+    (tmp_path / "update.status").write_text("ok abc -> def")
+    (tmp_path / "version.txt").write_text("def 21.10.2026 Test")
+    app = web.create_app(cfg_path).test_client()
+    assert app.get("/api/version").get_json() == {"version": "def 21.10.2026 Test", "update": "ok abc -> def"}
+    assert app.post("/api/update", json={}).get_json() == {"update": "angefordert"}
+    assert (tmp_path / "update.request").exists()
+    assert app.get("/api/update/status").get_data(as_text=True) == "angefordert"
