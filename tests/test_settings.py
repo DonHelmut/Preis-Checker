@@ -73,3 +73,17 @@ def test_ingress_prefix(tmp_path, monkeypatch):
     _, app = _app(tmp_path, monkeypatch, {})
     r = app.post("/einstellungen", data={}, headers={"X-Ingress-Path": "/api/hassio_ingress/abc"})
     assert r.headers["Location"].startswith("/api/hassio_ingress/abc/einstellungen")
+
+
+def test_api_einstellungen(tmp_path, monkeypatch):
+    path, app = _app(tmp_path, monkeypatch, {"strom": {"aktiv": True, "verbrauch_kwh": 2500},
+                                             "benachrichtigung": {"telegram_bot_token": "geheim"}})
+    r = app.post("/api/einstellungen", json={"strom": {"verbrauch_kwh": 3000}, "produkte": {"liste": [{"suche": "X"}]},
+                                             "benachrichtigung": {"ha_dienst": "notify.handy"}})
+    assert r.status_code == 200
+    cfg = load_raw(path)
+    assert cfg["strom"] == {"aktiv": True, "verbrauch_kwh": 3000}
+    assert cfg["produkte"]["liste"] == [{"suche": "X"}]
+    assert cfg["benachrichtigung"] == {"telegram_bot_token": "geheim", "ha_dienst": "notify.handy"}
+    assert app.get("/api/einstellungen").get_json()["benachrichtigung"]["telegram_bot_token"] == "***"
+    assert app.post("/api/einstellungen", data="kaputt").status_code == 400

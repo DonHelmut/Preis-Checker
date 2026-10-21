@@ -50,6 +50,25 @@ def create_app(config_path=None) -> Flask:
         save_raw(cfg, config_path)
         return redirect(url_for("einstellungen", ok=1))
 
+    @app.get("/api/einstellungen")
+    def api_einstellungen():
+        cfg = load_raw(config_path)
+        n = cfg.get("benachrichtigung") or {}
+        if n.get("telegram_bot_token"):
+            n["telegram_bot_token"] = "***"
+        return jsonify(cfg)
+
+    @app.post("/api/einstellungen")
+    def api_einstellungen_setzen():
+        """JSON wird in die Config gemischt (verschachtelte Abschnitte einzeln, Listen ersetzt)."""
+        neu = request.get_json(force=True, silent=True)
+        if not isinstance(neu, dict):
+            return jsonify({"fehler": "JSON-Objekt erwartet"}), 400
+        cfg = load_raw(config_path)
+        _mischen(cfg, neu)
+        save_raw(cfg, config_path)
+        return jsonify(cfg)
+
     @app.post("/test-benachrichtigung")
     def test_benachrichtigung():
         cfg = load_raw(config_path)
@@ -105,6 +124,16 @@ def create_app(config_path=None) -> Flask:
         return jsonify(version_info())
 
     return app
+
+
+def _mischen(ziel: dict, neu: dict) -> None:
+    for k, v in neu.items():
+        if isinstance(v, dict) and isinstance(ziel.get(k), dict):
+            _mischen(ziel[k], v)
+        elif v is None:
+            ziel.pop(k, None)
+        else:
+            ziel[k] = v
 
 
 def _lesen(name: str) -> str | None:
