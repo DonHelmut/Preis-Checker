@@ -154,3 +154,11 @@ def test_nettopreise_werden_hochgerechnet():
     assert preis("RX 9070 XT\n699,00 € exkl. MwSt.\n831,81 € brutto") == 831.81
     # „zzgl. Versand“ ist kein Nettopreis
     assert preis("Sonos Beam Gen 2\n449,00 €\nzzgl. Versand 4,99 €") == 449.0
+
+
+def test_netto_direkt_hinter_preis():
+    # Proshop: Brutto ohne „inkl.“, darunter der Nettopreis mit „exkl. MwSt.“
+    proshop = "ASRock RX 9070 XT Steel Legend Dark 16GB\nAUF LAGER\n861,17 €\n723,67 € exkl. MwSt.\nBestellen"
+    assert preis(proshop) == 861.17
+    # Kleiner Betrag daneben (Bundle-Zubehör) darf nicht als Nettopreis gelten
+    assert preis(proshop + "\nDieses Bundle enthält: Spiel 59,99 €") == 861.17

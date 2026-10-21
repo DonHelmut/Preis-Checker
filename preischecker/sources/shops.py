@@ -104,7 +104,9 @@ def preis(text: str) -> float | None:
         rest = [w for w, _ in kandidaten if w not in netto]
         if rest:
             return min(rest)
-    return round(min(w for w, _ in kandidaten) * MWST, 2)
+    # „723,67 € exkl. MwSt.“: genau dieser Nettopreis zählt, nicht ein kleinerer Betrag daneben (Zubehör im Bundle o. Ä.)
+    direkt = [w for w, umfeld in kandidaten if _NETTO.search(umfeld[:25])]
+    return round(min(direkt or [w for w, _ in kandidaten]) * MWST, 2)
 
 
 def alter_preis(text: str) -> float | None:
