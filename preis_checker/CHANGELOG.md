@@ -1,6 +1,11 @@
 # Changelog
 
 
+## 1.1.6
+- Check24 Strom: Verbrauch mit „Übernehmen“ bestätigen, sonst startete der Vergleich nicht
+- Check24 Internet: neues Formular (Adresse im Dialog hinter „Adresse“-Button)
+- Nettopreis („723,67 € exkl. MwSt.“) wird gezielt hochgerechnet, nicht der kleinste Betrag der Kachel
+
 ## 1.1.5
 - Fix Check24 Strom/Internet: offene Ortsauswahl („71404 Korb“) verdeckte den nächsten Button → Timeout
 - Klicks bei Formularen mit kürzerem Timeout und zweitem Versuch

@@ -38,7 +38,8 @@ def _strom_cards(page, cfg: dict) -> list[dict]:
     b.accept_cookies(page)
     if b.fill_first(page, ["postleitzahl", "plz", "zipcode"], str(ort["plz"])):
         b.pick_autocomplete(page, str(ort["plz"]))
-    b.fill_first(page, ["verbrauch", "kwh", "consumption"], kwh)
+    if b.fill_first(page, ["verbrauch", "kwh", "consumption"], kwh):
+        b.bestaetigen(page)
     b.submit(page)
     return b.wait_for_cards(page, r"kWh|Arbeitspreis", timeout_s=timeout)
 
@@ -48,12 +49,14 @@ def _dsl_cards(page, cfg: dict) -> list[dict]:
     timeout = cfg["browser"].get("timeout_sekunden", 60)
     page.goto(DSL_START, wait_until="domcontentloaded")
     b.accept_cookies(page)
+    b.oeffnen(page, r"^\W*adresse")  # Adressfelder liegen in einem Dialog
     if b.fill_first(page, ["postleitzahl", "plz", "zipcode"], str(ort["plz"])):
         b.pick_autocomplete(page, str(ort["plz"]))
     if ort.get("strasse") and b.fill_first(page, ["straße", "strasse", "street"], ort["strasse"]):
-        b.pick_autocomplete(page, ort["strasse"])
+        b.pick_autocomplete(page, ort["strasse"][:8])  # Liste kürzt evtl. „…str.“
     if ort.get("hausnummer"):
         b.fill_first(page, ["hausnummer", "hausnr", "nr", "streetnumber", "housenumber"], str(ort["hausnummer"]))
+    b.bestaetigen(page)
     b.submit(page)
     return b.wait_for_cards(page, r"Mbit", timeout_s=timeout)
 

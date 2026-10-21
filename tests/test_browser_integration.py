@@ -125,9 +125,13 @@ def test_offene_ortsauswahl_blockiert_nicht(tmp_path):
       <input id="address" aria-label="Postleitzahl &amp; Ort" type="tel"
              oninput="document.getElementById('orte').style.display = this.value.length == 5 ? 'block' : 'none'">
       <button aria-label="Verbrauch " style="margin-top:20px"
-              onclick="document.getElementById('kwh').style.display='block'">2.500 kWh</button>
-      <input id="kwh" aria-label="Verbrauch in kWh" style="display:none">
-      <button title="Vergleichen" onclick="document.title = 'abgeschickt ' + document.getElementById('kwh').value
+              onclick="document.getElementById('kwhbox').style.display='block'">2.500 kWh</button>
+      <div id="kwhbox" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#eee">
+        <input id="kwh" aria-label="Jahresverbrauch in kWh">
+        <button onclick="document.getElementById('wert').value = document.getElementById('kwh').value;
+                         this.parentNode.style.display='none'">Übernehmen</button></div>
+      <input id="wert" type="hidden">
+      <button title="Vergleichen" onclick="document.title = 'abgeschickt ' + document.getElementById('wert').value
                                             + ' ' + document.getElementById('address').value">Vergleichen</button>
       <div id="orte" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#fff">
         <ul role="list"><li><button type="button"
@@ -139,6 +143,33 @@ def test_offene_ortsauswahl_blockiert_nicht(tmp_path):
         assert b.fill_first(page, ["postleitzahl", "plz"], "71404")
         b.pick_autocomplete(page, "71404")
         assert b.fill_first(page, ["verbrauch", "kwh"], "2700")
+        assert b.bestaetigen(page)
         b.submit(page)
         page.wait_for_timeout(300)
         assert page.title() == "abgeschickt 2700 71404 Korb"
+
+
+def test_check24_dsl_adressdialog(tmp_path, monkeypatch):
+    """Check24 DSL: Adresse steckt in einem Dialog hinter dem Button „Adresse“, Straße erst nach Ortswahl aktiv."""
+    from preischecker.sources import browser as b, check24
+    (tmp_path / "dsl.html").write_text("""<html><body>
+      <button type="button" onclick="document.getElementById('dlg').show()"><p>Adresse</p><p> </p></button>
+      <dialog id="dlg"><form method="dialog">
+        <label for="r0">PLZ oder Ort</label><input id="r0" type="text"
+          oninput="document.getElementById('l0').style.display = this.value.length == 5 ? 'block' : 'none'">
+        <ul id="l0" style="display:none"><li onclick="document.getElementById('r0').value='71404 Korb';
+            this.parentNode.style.display='none'; document.getElementById('r1').disabled=false">71404 Korb</li></ul>
+        <label for="r1">Straße</label><input id="r1" type="text" disabled
+          oninput="document.getElementById('l1').style.display='block'">
+        <ul id="l1" style="display:none"><li onclick="document.getElementById('r1').value='Pestalozzistr.';
+            this.parentNode.style.display='none'; document.getElementById('r2').disabled=false">Pestalozzistr.</li></ul>
+        <label for="r2">Nr.</label><input id="r2" type="text" disabled>
+        <button type="submit">fertig</button></form></dialog>
+      <button type="button" onclick="document.title = [r0.value, r1.value, r2.value].join('|')">vergleichen</button>
+    </body></html>""")
+    monkeypatch.setattr(check24, "DSL_START", f"file://{tmp_path}/dsl.html")
+    monkeypatch.setattr(b, "wait_for_cards", lambda page, *a, **k: [{"text": page.title()}])
+    cfg = {"browser": {"timeout_sekunden": 5},
+           "standort": {"plz": "71404", "strasse": "Pestalozzistraße", "hausnummer": "9"}}
+    with b.browser_page(cfg) as page:
+        assert check24._dsl_cards(page, cfg) == [{"text": "71404 Korb|Pestalozzistr.|9"}]

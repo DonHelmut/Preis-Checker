@@ -218,6 +218,25 @@ def pick_autocomplete(page: Page, text: str | None = None) -> None:
     page.wait_for_timeout(500)
 
 
+def oeffnen(page: Page, name: str) -> bool:
+    """Button klicken, hinter dem ein Formular-Dialog steckt (z. B. „Adresse“ bei Check24 DSL)."""
+    btn = _sichtbar(page.get_by_role("button", name=re.compile(name, re.I)))
+    if btn is None or not _klicken(page, btn, 4000):
+        return False
+    page.wait_for_timeout(600)
+    return True
+
+
+def bestaetigen(page: Page) -> bool:
+    """Eingabe-Overlay schließen („Übernehmen“ bei Check24), sonst gilt der eingetippte Wert nicht."""
+    btn = _sichtbar(page.get_by_role("button", name=re.compile(r"^\W*(übernehmen|bestätigen|fertig)\W*$", re.I)))
+    if btn is None:
+        return False
+    _klicken(page, btn, 4000)
+    page.wait_for_timeout(500)
+    return True
+
+
 def submit(page: Page) -> None:
     accept_cookies(page, warten_s=0)  # spät eingeblendete Banner blockieren sonst den Klick
     btn = _sichtbar(page.get_by_role("button", name=re.compile(r"vergleich|berechnen|suchen|prüfen|weiter|tarife", re.I)))
