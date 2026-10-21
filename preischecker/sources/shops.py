@@ -74,24 +74,42 @@ def norm(s: str) -> str:
     return re.sub(r"[^0-9a-zäöüß]", "", s.lower())
 
 
+_NETTO = re.compile(r"(zzgl|exkl|excl|ohne)\.?\s*(gesetzl\.?\s*)?(mwst|ust|vat|mehrwertsteuer)|\bnetto\b", re.I)
+_BRUTTO = re.compile(r"(inkl|incl)\.?\s*(gesetzl\.?\s*)?(mwst|ust|vat|mehrwertsteuer)|\bbrutto\b", re.I)
+MWST = 1.19
+
+
 def _betraege(text: str):
     for m in _PREIS.finditer(text):
         g = m.groups()
         euro, cent = (g[0], g[1]) if g[0] else (g[2], g[3])
         wert = int(euro.replace(".", "")) + int(cent or 0) / 100
         if wert >= 1:
-            yield wert, text[max(0, m.start() - 30):m.start()], text[m.end():m.end() + 12]
+            yield wert, text[max(0, m.start() - 30):m.start()], text[m.end():m.end() + 12], text[m.end():m.end() + 60]
 
 
 def preis(text: str) -> float | None:
-    werte = [w for w, davor, danach in _betraege(text)
-             if not _KEIN_PREIS_DAVOR.search(davor) and not _KEIN_PREIS_DANACH.search(danach)]
-    return min(werte) if werte else None
+    """Endpreis für Privatkunden. Nettopreise (Geschäftskunden, „zzgl. MwSt.“) werden mit 19 % hochgerechnet."""
+    kandidaten = [(w, umfeld) for w, davor, danach, umfeld in _betraege(text)
+                  if not _KEIN_PREIS_DAVOR.search(davor) and not _KEIN_PREIS_DANACH.search(danach)]
+    if not kandidaten:
+        return None
+    if not _NETTO.search(text):
+        return min(w for w, _ in kandidaten)
+    if _BRUTTO.search(text):  # Netto und Brutto angegeben → Bruttopreis nehmen
+        brutto = [w for w, umfeld in kandidaten if _BRUTTO.search(umfeld) and not _NETTO.search(umfeld[:25])]
+        if brutto:
+            return min(brutto)
+        netto = [w for w, umfeld in kandidaten if _NETTO.search(umfeld)]
+        rest = [w for w, _ in kandidaten if w not in netto]
+        if rest:
+            return min(rest)
+    return round(min(w for w, _ in kandidaten) * MWST, 2)
 
 
 def alter_preis(text: str) -> float | None:
     """Streichpreis / UVP, falls angezeigt."""
-    werte = [w for w, davor, _ in _betraege(text) if _ALTPREIS_DAVOR.search(davor)]
+    werte = [w for w, davor, *_ in _betraege(text) if _ALTPREIS_DAVOR.search(davor)]
     return max(werte) if werte else None
 
 

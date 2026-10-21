@@ -86,6 +86,33 @@ def letzte(kategorie: str) -> dict | None:
     return {**json.loads(row["daten"]), "zeit": row["zeit"], "fehler": row["fehler"]}
 
 
+def shop_daten_entfernen(shop: str) -> dict:
+    """Alle gespeicherten Preise eines Shops löschen (z. B. nach falsch gelesenen Preisen).
+
+    Gespeicherte Ergebnisse werden ohne diesen Shop neu bewertet, damit Verlauf und Tiefstpreis stimmen.
+    """
+    geaendert = 0
+    with connect() as con:
+        geloescht = con.execute("DELETE FROM preise WHERE shop=?", (shop,)).rowcount
+        for row in con.execute("SELECT id, daten FROM ergebnisse WHERE kategorie LIKE 'produkt:%'").fetchall():
+            e = json.loads(row["daten"])
+            rest = [a for a in e.get("angebote") or [] if a.get("shop") != shop]
+            if len(rest) == len(e.get("angebote") or []):
+                continue
+            war_bester = e.get("bester_shop") == shop
+            e["angebote"] = rest
+            e["bester_preis"] = rest[0]["preis"] if rest else None
+            e["bester_shop"] = rest[0]["shop"] if rest else None
+            ziel = e.get("zielpreis")
+            e["ziel_erreicht"] = bool(rest and ziel and rest[0]["preis"] <= ziel)
+            if war_bester:  # Schnäppchen-Gründe bezogen sich auf den falschen Preis
+                e["schnaeppchen"], e["gruende"] = False, []
+            con.execute("UPDATE ergebnisse SET bestes_jahr=?, daten=? WHERE id=?",
+                        (e["bester_preis"], json.dumps(e, ensure_ascii=False), row["id"]))
+            geaendert += 1
+    return {"preise_geloescht": geloescht, "ergebnisse_korrigiert": geaendert}
+
+
 def verlauf(kategorie: str, limit: int = 60) -> list[dict]:
     with connect() as con:
         rows = con.execute(
