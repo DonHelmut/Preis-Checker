@@ -31,3 +31,46 @@ def test_benachrichtigen_ruft_dienst(monkeypatch):
     from preischecker import notify
     notify.test({"benachrichtigung": {"ha_dienst": "notify.mobile_app_handy"}})
     assert aufrufe[0][0] == "/services/notify/mobile_app_handy" and "Testnachricht" in aufrufe[0][1]["message"]
+
+
+def test_checkboxen_handys(tmp_path, monkeypatch):
+    from preischecker import web
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "x")
+    monkeypatch.setattr(ha, "_get", lambda pfad: [
+        {"domain": "light", "services": {"turn_on": {}}},
+        {"domain": "notify", "services": {"mobile_app_kalle_handy": {}, "mobile_app_franzi_handy": {},
+                                          "notify": {}, "send_message": {}}}])
+    monkeypatch.setattr(web, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump({"benachrichtigung": {"ha_dienst": "notify.mobile_app_kalle_handy"}}))
+    app = web.create_app(path).test_client()
+    html = app.get("/einstellungen").get_data(as_text=True)
+    assert "Franzi Handy" in html and "Kalle Handy" in html and "HA-Glocke" in html and "send_message" not in html
+    assert 'value="notify.mobile_app_kalle_handy" checked' in html
+    assert 'value="notify.mobile_app_franzi_handy" checked' not in html
+
+    app.post("/einstellungen", data={"ha_dienste_feld": "1",
+                                     "ha_dienste": ["notify.mobile_app_kalle_handy", "notify.mobile_app_franzi_handy"]})
+    from preischecker.config import load_raw
+    n = load_raw(path)["benachrichtigung"]
+    assert n == {"ha_dienste": ["notify.mobile_app_kalle_handy", "notify.mobile_app_franzi_handy"]}
+
+    aufrufe = []
+    monkeypatch.setattr(ha, "_post", lambda pfad, daten: aufrufe.append(pfad))
+    from preischecker import notify
+    notify.test({"benachrichtigung": n})
+    assert aufrufe == ["/services/notify/mobile_app_kalle_handy", "/services/notify/mobile_app_franzi_handy"]
+
+
+def test_ohne_addon_keine_checkboxen_und_nichts_geloescht(tmp_path, monkeypatch):
+    from preischecker import web
+    monkeypatch.delenv("SUPERVISOR_TOKEN", raising=False)
+    monkeypatch.setattr(web, "DATA_DIR", tmp_path)
+    path = tmp_path / "config.yaml"
+    path.write_text(yaml.safe_dump({"benachrichtigung": {"ha_dienste": ["notify.x"]}}))
+    app = web.create_app(path).test_client()
+    assert "Benachrichtigen an" not in app.get("/einstellungen").get_data(as_text=True)
+    app.post("/einstellungen", data={})
+    from preischecker.config import load_raw
+    assert load_raw(path)["benachrichtigung"]["ha_dienste"] == ["notify.x"]

@@ -37,7 +37,8 @@ def create_app(config_path=None) -> Flask:
     def einstellungen_seite(cfg, **extra):
         extra.setdefault("fehler", [])
         return render_template("einstellungen.html", cfg=cfg, abschnitte=settings.ABSCHNITTE,
-                               quellen=settings.QUELLEN, **extra)
+                               quellen=settings.QUELLEN, ha_dienste=ha.notify_dienste(),
+                               gewaehlte_dienste=notify.ha_dienste(cfg.get("benachrichtigung") or {}), **extra)
 
     @app.get("/einstellungen")
     def einstellungen():

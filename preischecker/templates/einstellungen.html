@@ -27,6 +27,16 @@
     {% if tipp %}<small>{{ tipp }}</small>{% endif %}
   </label>
   {% endfor %}
+  {% if titel == "Benachrichtigung" and ha_dienste %}
+  <input type="hidden" name="ha_dienste_feld" value="1">
+  {% set gewaehlt = gewaehlte_dienste %}
+  <div class="feld" style="display:grid;grid-template-columns:minmax(140px,220px) 1fr;gap:4px 12px;padding:6px 0">
+    <span>Benachrichtigen an</span>
+    <span>{% for dienst, name in ha_dienste %}
+      <label style="display:block;padding:3px 0"><input type="checkbox" name="ha_dienste" value="{{ dienst }}" {% if dienst in gewaehlt %}checked{% endif %}> {{ name }}</label>
+    {% endfor %}<small class="muted">Jeder hakt sein eigenes Handy an.</small></span>
+  </div>
+  {% endif %}
   {% if titel.startswith("Produkt") %}
   <label class="feld"><span>Quellen</span><span>
     {% set aktiv = get(cfg, "produkte.quellen") or quellen %}

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0
+- Benachrichtigung per Checkbox: jedes Handy aus HA einzeln anhaken (mehrere möglich)
+
 ## 0.2.0
 - Schnellsuche: beliebiges Produkt sofort suchen, mit einem Klick beobachten
 - Panel auch für Nicht-Admin-Benutzer sichtbar
