@@ -1,5 +1,5 @@
 name: Preis-Checker
-version: "0.1.0"
+version: "0.2.0"
 slug: preis_checker
 description: Strom, Internet und Produktpreise vergleichen (Check24, Geizhals, Alternate, Mindfactory) mit Schnäppchen-Alarm
 url: https://github.com/DonHelmut/Preis-Checker
@@ -12,6 +12,7 @@ ingress: true
 ingress_port: 8080
 panel_icon: mdi:tag-search
 panel_title: Preis-Checker
+panel_admin: false
 homeassistant_api: true
 ports:
   8080/tcp: null

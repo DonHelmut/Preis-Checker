@@ -72,5 +72,19 @@ def produkte_pruefen(cfg: dict, debug: bool = False) -> list[dict]:
     return ergebnisse
 
 
+def schnellsuche(cfg: dict, artikel: dict) -> dict:
+    """Einmalige Suche ohne Speichern/Benachrichtigen."""
+    angebote, fehler = [], []
+    with browser.browser_page(cfg) as page:
+        for shop, url in shops.alle_shops(cfg).items():
+            try:
+                angebote += shops.suchen(page, shop, url, artikel["suche"], cfg)
+            except Exception as e:
+                log.warning("Schnellsuche %s / %s: %s", shop, artikel["suche"], e)
+                fehler.append(f"{shop}: {type(e).__name__}")
+    ergebnis = compare.produkt(cfg, artikel, angebote)
+    return {**ergebnis, "fehler": "; ".join(fehler) or None}
+
+
 def laeuft() -> bool:
     return _lock.locked()

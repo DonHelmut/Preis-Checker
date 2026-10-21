@@ -76,3 +76,13 @@ def test_update_anfordern(tmp_path, monkeypatch):
     assert app.post("/api/update", json={}).get_json() == {"update": "angefordert"}
     assert (tmp_path / "update.request").exists()
     assert app.get("/api/update/status").get_data(as_text=True) == "angefordert"
+
+
+def test_footer_update_status(tmp_path, monkeypatch):
+    from preischecker import web
+    monkeypatch.setattr(web, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    (tmp_path / "config.yaml").write_text("{}")
+    (tmp_path / "update.status").write_text("ok a -> b")
+    html = web.create_app(tmp_path / "config.yaml").test_client().get("/").get_data(as_text=True)
+    assert "Update: ok a -&gt; b" in html and "built-in" not in html
