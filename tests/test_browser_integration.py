@@ -165,6 +165,7 @@ def test_check24_dsl_adressdialog(tmp_path, monkeypatch):
             this.parentNode.style.display='none'; document.getElementById('r2').disabled=false">Pestalozzistr.</li></ul>
         <label for="r2">Nr.</label><input id="r2" type="text" disabled>
         <button type="submit">fertig</button></form></dialog>
+      <button type="button" onclick="document.title = 'falscher Button'"><p>ohne Router · mit Young Tarifen</p></button>
       <button type="button" onclick="document.title = [r0.value, r1.value, r2.value].join('|')">vergleichen</button>
     </body></html>""")
     monkeypatch.setattr(check24, "DSL_START", f"file://{tmp_path}/dsl.html")
@@ -172,4 +173,14 @@ def test_check24_dsl_adressdialog(tmp_path, monkeypatch):
     cfg = {"browser": {"timeout_sekunden": 5},
            "standort": {"plz": "71404", "strasse": "Pestalozzistraße", "hausnummer": "9"}}
     with b.browser_page(cfg) as page:
-        assert check24._dsl_cards(page, cfg) == [{"text": "71404 Korb|Pestalozzistr.|9"}]
+        assert check24._dsl_cards(page, cfg)[1] == [{"text": "71404 Korb|Pestalozzistr.|9"}]
+
+
+def test_ergebnis_im_neuen_tab(tmp_path):
+    from preischecker.sources import browser as b
+    (tmp_path / "erg.html").write_text("<html><head><title>Ergebnis</title></head><body>ok</body></html>")
+    (tmp_path / "start.html").write_text(f"""<html><body>
+      <button onclick="window.open('file://{tmp_path}/erg.html')">Vergleichen</button></body></html>""")
+    with b.browser_page({"browser": {"timeout_sekunden": 5}}) as page:
+        page.goto(f"file://{tmp_path}/start.html")
+        assert b.submit(page).title() == "Ergebnis"

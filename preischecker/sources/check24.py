@@ -21,7 +21,7 @@ STROM_ERGEBNIS = "https://www.check24.de/strom/vergleich/check24/"
 DSL_START = "https://www.check24.de/dsl/"
 
 
-def _strom_cards(page, cfg: dict) -> list[dict]:
+def _strom_cards(page, cfg: dict):
     ort = cfg["standort"]
     kwh = str(cfg["strom"]["verbrauch_kwh"])
     timeout = cfg["browser"].get("timeout_sekunden", 60)
@@ -31,7 +31,7 @@ def _strom_cards(page, cfg: dict) -> list[dict]:
     b.accept_cookies(page)
     cards = b.wait_for_cards(page, r"kWh|Arbeitspreis", timeout_s=min(timeout, 25))
     if len(cards) >= 3:
-        return cards
+        return page, cards
 
     # 2. Versuch: Formular ausfüllen
     page.goto(STROM_START, wait_until="domcontentloaded")
@@ -40,11 +40,11 @@ def _strom_cards(page, cfg: dict) -> list[dict]:
         b.pick_autocomplete(page, str(ort["plz"]))
     if b.fill_first(page, ["verbrauch", "kwh", "consumption"], kwh):
         b.bestaetigen(page)
-    b.submit(page)
-    return b.wait_for_cards(page, r"kWh|Arbeitspreis", timeout_s=timeout)
+    page = b.submit(page)
+    return page, b.wait_for_cards(page, r"kWh|Arbeitspreis", timeout_s=timeout)
 
 
-def _dsl_cards(page, cfg: dict) -> list[dict]:
+def _dsl_cards(page, cfg: dict):
     ort = cfg["standort"]
     timeout = cfg["browser"].get("timeout_sekunden", 60)
     page.goto(DSL_START, wait_until="domcontentloaded")
@@ -57,8 +57,8 @@ def _dsl_cards(page, cfg: dict) -> list[dict]:
     if ort.get("hausnummer"):
         b.fill_first(page, ["hausnummer", "hausnr", "nr", "streetnumber", "housenumber"], str(ort["hausnummer"]))
     b.bestaetigen(page)
-    b.submit(page)
-    return b.wait_for_cards(page, r"Mbit", timeout_s=timeout)
+    page = b.submit(page)
+    return page, b.wait_for_cards(page, r"Mbit", timeout_s=timeout)
 
 
 def _run(cfg: dict, kind: str, debug: bool):
@@ -66,9 +66,9 @@ def _run(cfg: dict, kind: str, debug: bool):
     parse = parse_strom if kind == "strom" else parse_internet
     with b.browser_page(cfg) as page:
         try:
-            cards = collect(page, cfg)
+            page, cards = collect(page, cfg)
         except Exception:
-            b.dump_debug(page, f"check24-{kind}-fehler", [])
+            b.dump_debug(page.context.pages[-1], f"check24-{kind}-fehler", [])
             raise
         offers = [o for o in (parse(c["text"], quelle="check24") for c in cards) if o]
         if debug or not offers:
