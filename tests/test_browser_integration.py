@@ -116,3 +116,29 @@ def test_spaetes_cookie_banner_blockiert_nicht(tmp_path):
         b.submit(page)
         page.wait_for_timeout(300)
         assert page.title() == "abgeschickt"
+
+
+def test_offene_ortsauswahl_blockiert_nicht(tmp_path):
+    """Check24-Stil: Nach der PLZ bleibt eine Ortsliste offen und verdeckt den Verbrauch-Button."""
+    from preischecker.sources import browser as b
+    (tmp_path / "strom.html").write_text("""<html><body>
+      <input id="address" aria-label="Postleitzahl &amp; Ort" type="tel"
+             oninput="document.getElementById('orte').style.display = this.value.length == 5 ? 'block' : 'none'">
+      <button aria-label="Verbrauch " style="margin-top:20px"
+              onclick="document.getElementById('kwh').style.display='block'">2.500 kWh</button>
+      <input id="kwh" aria-label="Verbrauch in kWh" style="display:none">
+      <button title="Vergleichen" onclick="document.title = 'abgeschickt ' + document.getElementById('kwh').value
+                                            + ' ' + document.getElementById('address').value">Vergleichen</button>
+      <div id="orte" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#fff">
+        <ul role="list"><li><button type="button"
+          onclick="document.getElementById('address').value += ' Korb'; this.closest('#orte').style.display='none'">
+          <span>71404</span><span>Korb</span></button></li></ul></div>
+    </body></html>""")
+    with b.browser_page({"browser": {"timeout_sekunden": 5}}) as page:
+        page.goto(f"file://{tmp_path}/strom.html")
+        assert b.fill_first(page, ["postleitzahl", "plz"], "71404")
+        b.pick_autocomplete(page, "71404")
+        assert b.fill_first(page, ["verbrauch", "kwh"], "2700")
+        b.submit(page)
+        page.wait_for_timeout(300)
+        assert page.title() == "abgeschickt 2700 71404 Korb"

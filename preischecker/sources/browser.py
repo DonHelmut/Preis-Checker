@@ -173,7 +173,7 @@ def fill_first(page: Page, patterns: list[str], value: str) -> bool:
     if feld is None:
         btn = page.get_by_role("button", name=rx)
         if btn.count() and btn.first.is_visible():
-            btn.first.click()
+            _klicken(page, btn.first)
             page.wait_for_timeout(600)
             feld = _erstes_feld(page, rx, patterns)
     if feld is None:
@@ -182,11 +182,36 @@ def fill_first(page: Page, patterns: list[str], value: str) -> bool:
     return True
 
 
-def pick_autocomplete(page: Page) -> None:
+def _klicken(page: Page, loc, timeout_ms: int = 8000) -> bool:
+    """Klickt; liegt etwas darüber (offene Vorschlagsliste o. Ä.), erst Escape, dann noch ein Versuch."""
+    for _ in range(2):
+        try:
+            loc.click(timeout=timeout_ms)
+            return True
+        except Exception:
+            page.keyboard.press("Escape")
+            page.wait_for_timeout(300)
+    return False
+
+
+def _sichtbar(loc):
+    for i in range(min(loc.count(), 5)):
+        if loc.nth(i).is_visible():
+            return loc.nth(i)
+    return None
+
+
+def pick_autocomplete(page: Page, text: str | None = None) -> None:
+    """Ersten Vorschlag übernehmen. Check24 zeigt die Orte als Buttons in einer Liste („71404 Korb“)."""
     page.wait_for_timeout(1200)
-    opt = page.get_by_role("option")
-    if opt.count():
-        opt.first.click()
+    kandidaten = [page.get_by_role("option")]
+    if text:
+        kandidaten.append(page.locator("li").filter(has_text=text).locator("button, a, [role=button]"))
+        kandidaten.append(page.locator("li").filter(has_text=text))
+    for loc in kandidaten:
+        treffer = _sichtbar(loc)
+        if treffer is not None and _klicken(page, treffer, 4000):
+            break
     else:
         page.keyboard.press("ArrowDown")
         page.keyboard.press("Enter")
@@ -195,10 +220,8 @@ def pick_autocomplete(page: Page) -> None:
 
 def submit(page: Page) -> None:
     accept_cookies(page, warten_s=0)  # spät eingeblendete Banner blockieren sonst den Klick
-    btn = page.get_by_role("button", name=re.compile(r"vergleich|berechnen|suchen|prüfen|weiter|tarife", re.I))
-    if btn.count():
-        btn.first.click()
-    else:
+    btn = _sichtbar(page.get_by_role("button", name=re.compile(r"vergleich|berechnen|suchen|prüfen|weiter|tarife", re.I)))
+    if btn is None or not _klicken(page, btn):
         page.keyboard.press("Enter")
 
 
