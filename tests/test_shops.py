@@ -76,3 +76,32 @@ def test_meldetext():
     e = compare.produkt(CFG2, ART, [ProduktAngebot("RX 9070 XT", 520, "alternate", "https://x")], verlauf=[650] * 4)
     t = notify.produkt_text(e)
     assert t.startswith("Schnäppchen: RX 9070 XT") and "520.00 € bei alternate" in t and "https://x" in t
+
+
+def test_relevanz_wortgenau():
+    from preischecker.sources.shops import enthaelt_suche
+    w = ["Nintendo", "Switch", "2"]
+    assert enthaelt_suche("Nintendo Switch 2, gray/gray, DE", w)
+    assert enthaelt_suche("Nintendo Switch 2 Mario Kart World Bundle", w)
+    assert not enthaelt_suche("Nintendo Switch V2 2022 Edition 32GB, neon red - neon blue", w)
+    assert not enthaelt_suche("Nintendo Switch OLED 64GB", w)
+    assert not enthaelt_suche("Nintendo Switch 2022", w)
+    r = ["RX", "9070", "XT"]
+    assert enthaelt_suche("16GB PowerColor Radeon RX 9070 XT Hellhound", r)
+    assert enthaelt_suche("XFX Swift RX9070XT 16GB", r)
+    assert not enthaelt_suche("Sapphire Pulse RX 9070 16GB", r)
+    assert not enthaelt_suche("RX 90700 XT", r)
+
+
+def test_shops_nach_kategorie():
+    from preischecker.sources.shops import shops_fuer, aktive_shops
+    cfg = {"produkte": {}}
+    alle = aktive_shops(cfg)
+    assert "mediamarkt" in alle and "conrad" not in alle  # Standard ohne Conrad/Proshop
+    hw = shops_fuer(cfg, {"suche": "x", "kategorie": "hardware"})
+    assert {"geizhals", "idealo", "mindfactory", "alternate"} <= set(hw) and "mediamarkt" not in hw
+    el = shops_fuer(cfg, {"suche": "x", "kategorie": "elektronik"})
+    assert {"mediamarkt", "saturn", "geizhals"} <= set(el) and "mindfactory" not in el
+    cfg = {"produkte": {"quellen": ["geizhals"], "eigene_shops": {"meinshop": "https://m/{q}"}}}
+    assert shops_fuer(cfg, {"suche": "x", "kategorie": "hardware"}) == {
+        "geizhals": "https://geizhals.de/?fs={q}&hloc=de", "meinshop": "https://m/{q}"}

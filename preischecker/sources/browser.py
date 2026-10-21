@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import time
 from contextlib import contextmanager
 from datetime import datetime
@@ -97,19 +98,41 @@ def accept_cookies(page: Page) -> None:
             continue
 
 
+def _editierbar(loc) -> bool:
+    try:
+        return loc.is_visible() and loc.evaluate(
+            "e => ['INPUT', 'TEXTAREA'].includes(e.tagName) || e.isContentEditable")
+    except Exception:
+        return False
+
+
+def _erstes_feld(page: Page, rx: re.Pattern, patterns: list[str]):
+    kandidaten = [page.get_by_label(rx), page.get_by_placeholder(rx)]
+    kandidaten += [page.locator(f"input[name*='{n}' i], input[id*='{n}' i]") for n in patterns]
+    for loc in kandidaten:
+        for i in range(min(loc.count(), 5)):
+            if _editierbar(loc.nth(i)):
+                return loc.nth(i)
+    return None
+
+
 def fill_first(page: Page, patterns: list[str], value: str) -> bool:
-    """Füllt das erste Eingabefeld, dessen Label/Placeholder/Name passt."""
+    """Füllt das erste Eingabefeld, dessen Label/Placeholder/Name passt.
+
+    Ist das Feld hinter einem Button versteckt ("Verbrauch bearbeiten"), wird der erst geklickt.
+    """
     rx = re.compile("|".join(patterns), re.I)
-    for loc in (page.get_by_label(rx), page.get_by_placeholder(rx)):
-        if loc.count() and loc.first.is_visible():
-            loc.first.fill(value)
-            return True
-    for name in patterns:
-        loc = page.locator(f"input[name*='{name}' i], input[id*='{name}' i]")
-        if loc.count() and loc.first.is_visible():
-            loc.first.fill(value)
-            return True
-    return False
+    feld = _erstes_feld(page, rx, patterns)
+    if feld is None:
+        btn = page.get_by_role("button", name=rx)
+        if btn.count() and btn.first.is_visible():
+            btn.first.click()
+            page.wait_for_timeout(600)
+            feld = _erstes_feld(page, rx, patterns)
+    if feld is None:
+        return False
+    feld.fill(value)
+    return True
 
 
 def pick_autocomplete(page: Page) -> None:
@@ -150,9 +173,15 @@ def wait_for_cards(page: Page, keyword: str, timeout_s: int = 60, min_len: int =
     return more if len(more) > len(cards) else cards
 
 
+MAX_DEBUG = 40
+
+
 def dump_debug(page: Page, name: str, cards: list[dict]) -> Path:
-    out = DATA_DIR / "debug" / f"{name}-{datetime.now():%Y%m%d-%H%M%S}"
+    basis = DATA_DIR / "debug"
+    out = basis / f"{name}-{datetime.now():%Y%m%d-%H%M%S}"
     out.mkdir(parents=True, exist_ok=True)
+    for alt in sorted(basis.iterdir(), key=lambda p: p.stat().st_mtime)[:-MAX_DEBUG]:
+        shutil.rmtree(alt, ignore_errors=True)
     try:
         page.screenshot(path=str(out / "seite.png"), full_page=True)
     except Exception:

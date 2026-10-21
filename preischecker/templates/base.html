@@ -1,61 +1,45 @@
-<!doctype html>
+{% from "_makros.html" import icon %}<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Preis-Checker</title>
+<title>{% block titel %}Preis-Checker{% endblock %}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M25 17.5 17.5 25a2 2 0 0 1-2.8 0L8 18.3V8h10.3l6.7 6.7a2 2 0 0 1 0 2.8z' fill='none' stroke='white' stroke-width='2.2' stroke-linejoin='round'/%3E%3Ccircle cx='12.5' cy='12.5' r='1.6' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 {% block kopf %}{% endblock %}
-<style>
-:root { --bg:#f6f7f9; --card:#fff; --fg:#1b1f24; --muted:#667; --line:#e3e6ea; --good:#14804a; --bad:#b42318; --accent:#2457c5; }
-@media (prefers-color-scheme: dark) { :root { --bg:#111418; --card:#1a1e24; --fg:#e6e8eb; --muted:#9aa3ad; --line:#2a3038; --good:#3ccf7f; --bad:#ff6b5f; --accent:#7aa2ff; } }
-* { box-sizing:border-box; }
-body { margin:0; font:15px/1.45 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
-main { max-width:1000px; margin:0 auto; padding:16px; }
-header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-h1 { font-size:22px; margin:8px 0; }
-section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:16px 0; }
-h2 { margin:0 0 8px; font-size:18px; }
-.kpis { display:flex; gap:24px; flex-wrap:wrap; margin:8px 0 12px; }
-.kpi b { display:block; font-size:22px; }
-.kpi span { color:var(--muted); font-size:13px; }
-.good { color:var(--good); } .bad { color:var(--bad); } .muted { color:var(--muted); }
-.scroll { overflow-x:auto; }
-table { width:100%; border-collapse:collapse; font-size:14px; }
-th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
-td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
-button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
-button[disabled] { opacity:.6; }
-a { color:var(--accent); }
-.tag { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px; font-size:12px; background:var(--good); color:var(--card); }
-.err { background:color-mix(in srgb, var(--bad) 12%, transparent); padding:8px 10px; border-radius:6px; }
-.nav { display:flex; gap:14px; font-size:14px; }
-.nav a { text-decoration:none; color:var(--muted); }
-.nav a.aktiv { color:var(--fg); font-weight:600; }
-form.suche { display:flex; gap:8px; flex-wrap:wrap; }
-form.suche input[name=q] { flex:1 1 240px; max-width:none; }
-form.suche input[name=min_preis] { flex:0 1 130px; }
-.ok { background:color-mix(in srgb, var(--good) 14%, transparent); padding:8px 10px; border-radius:6px; }
-label.feld { display:grid; grid-template-columns: minmax(140px, 220px) 1fr; gap:4px 12px; align-items:center; padding:6px 0; }
-label.feld small { grid-column:2; color:var(--muted); font-size:12px; }
-input[type=text], input[type=number], input[type=date], input[type=password] { width:100%; max-width:360px; padding:7px 9px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); font:inherit; }
-input[type=checkbox] { width:18px; height:18px; justify-self:start; }
-table.edit input { max-width:none; }
-table.edit input[name=p_suche] { min-width:180px; }
-table.edit input[name=p_darf_nicht_enthalten] { min-width:200px; }
-@media (max-width:560px) { label.feld { grid-template-columns:1fr; } label.feld small { grid-column:1; } }
-</style>
 </head>
-<body>
-<main>
-<header>
-  <h1>Preis-Checker</h1>
-  <nav class="nav">
-    <a href="{{ url_for('index') }}" class="{{ 'aktiv' if seite == 'index' }}">Übersicht</a>
-    <a href="{{ url_for('einstellungen') }}" class="{{ 'aktiv' if seite == 'einstellungen' }}">Einstellungen</a>
-  </nav>
-  {% block aktionen %}{% endblock %}
+<body data-base="{{ url_for('index') }}">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{{ url_for('index') }}"><span class="brand-mark">{{ icon("tag") }}</span>Preis-Checker</a>
+    <nav class="tabs">
+      <a href="{{ url_for('index') }}" class="{{ 'aktiv' if seite in ('index', 'suche') }}">Übersicht</a>
+      <a href="{{ url_for('einstellungen') }}" class="{{ 'aktiv' if seite == 'einstellungen' }}">Einstellungen</a>
+    </nav>
+    <form method="post" action="{{ url_for('pruefen') }}">
+      <button class="btn" data-pruefen {% if fortschritt.aktiv %}disabled{% endif %} title="Alle Preise jetzt prüfen">
+        {{ icon("refresh") }}<span class="btn-text">Jetzt prüfen</span></button>
+    </form>
+  </div>
 </header>
+<main class="wrap">
+{% block fortschritt %}
+<div id="fortschritt" class="card fortschritt {{ 'an' if fortschritt.aktiv }}" style="margin-bottom:20px" aria-live="polite">
+  <div class="zeile"><span class="puls"></span><b class="phase">{{ fortschritt.phase or "Prüfung läuft" }}</b><span class="spacer"></span><span class="zahl muted klein num"></span></div>
+  <div class="balken"><span style="width:{{ fortschritt.prozent }}%"></span></div>
+  <div class="laufend"></div>
+</div>
+{% endblock %}
 {% block inhalt %}{% endblock %}
 </main>
+<footer class="fuss">
+  <span>{% if version["version"] %}Version {{ version["version"] }}{% endif %}{% if version["update"] %} · Update: {{ version["update"] }}{% endif %}</span>
+  {% if not addon %}
+  <form method="post" action="{{ url_for('update_anfordern') }}" onsubmit="return confirm('Von GitHub aktualisieren und neu starten?')">
+    <button class="btn ghost s">{{ icon("refresh", "s") }} Aktualisieren</button>
+  </form>
+  {% else %}<span>Updates über Home Assistant → Einstellungen → Add-ons</span>{% endif %}
+</footer>
+<script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </body>
 </html>

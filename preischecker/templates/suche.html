@@ -1,38 +1,52 @@
 {% extends "base.html" %}
-{% set seite = "suche" %}
-{% block kopf %}{% if s.status == "laeuft" %}<meta http-equiv="refresh" content="4">{% endif %}{% endblock %}
+{% from "_makros.html" import icon %}
+{% block titel %}„{{ s.artikel.suche }}“ · Preis-Checker{% endblock %}
+{% block fortschritt %}{% endblock %}
 {% block inhalt %}
-<section>
-  <h2>„{{ s.artikel.suche }}“</h2>
-  {% if s.status == "laeuft" %}
-    <p>Suche läuft … Seite aktualisiert sich automatisch.</p>
-  {% elif s.status == "fehler" %}
-    <p class="err">{{ s.fehler }}</p>
-  {% else %}{% set e = s.ergebnis %}
-    {% if e.fehler %}<p class="muted">Hinweis: {{ e.fehler }}</p>{% endif %}
-    {% if not e.angebote %}
-      <p>Keine passenden Angebote gefunden. Tipp: Suchbegriff kürzer oder genauer.</p>
-    {% else %}
-      <div class="kpis">
-        <div class="kpi"><b class="good">{{ "%.2f"|format(e.angebote[0].preis) }} €</b><span>günstigster · {{ e.angebote[0].shop }}</span></div>
-        <div class="kpi"><b>{{ e.angebote|length }}</b><span>Angebote</span></div>
-      </div>
-      <div class="scroll"><table>
-        <thead><tr><th class="num">Preis</th><th>Shop</th><th>Produkt</th></tr></thead>
-        <tbody>{% for a in e.angebote[:25] %}
-          <tr><td class="num">{{ "%.2f"|format(a.preis) }} €{% if a.rabatt_prozent %} <span class="muted">−{{ "%.0f"|format(a.rabatt_prozent) }}%</span>{% endif %}</td>
-          <td>{{ a.shop }}{% if a.aktion %}<span class="tag">Aktion</span>{% endif %}</td>
-          <td style="white-space:normal">{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</td></tr>
+<a class="zurueck" href="{{ url_for('index') }}">{{ icon("pfeil-links", "s") }} Übersicht</a>
+<div class="titel"><div><h1>„{{ s.artikel.suche }}“</h1>
+  <div class="meta"><span class="chip">{{ icon("laden", "s") }} {{ KATEGORIEN[s.artikel.kategorie or "alle"].split(" (")[0] }}</span>
+  {% if s.artikel.min_preis %}<span class="chip">ab {{ s.artikel.min_preis|eur }}</span>{% endif %}</div></div></div>
+
+<div id="fortschritt" class="card fortschritt {{ 'an' if s.status == 'laeuft' }}" data-url="api/suche/{{ sid }}" style="margin-top:20px" aria-live="polite">
+  <div class="zeile"><span class="puls"></span><b class="phase">Shops werden durchsucht</b><span class="spacer"></span><span class="zahl muted klein num"></span></div>
+  <div class="balken"><span style="width:{{ sf.prozent }}%"></span></div>
+  <div class="laufend"></div>
+</div>
+
+{% if s.status == "fehler" %}<div class="meldung fehler" style="margin-top:20px">{{ icon("warn") }} {{ s.fehler }}</div>
+{% elif s.status == "fertig" %}{% set e = s.ergebnis %}
+  {% if not e.angebote %}
+    <div class="card card-pad" style="margin-top:20px"><b>Keine passenden Angebote gefunden.</b>
+      <p class="ink2" style="margin:6px 0 0">Tipp: Suchbegriff kürzer oder genauer, z. B. Modellnummer. Alle Wörter müssen im Produktnamen vorkommen.</p></div>
+  {% else %}
+    <div class="kpis" style="margin-top:20px">
+      <div class="card kpi"><div class="label">Günstigster</div><div class="wert" style="color:var(--good-ink)">{{ e.angebote[0].preis|eur }}</div><div class="unter">{{ shop_name(e.angebote[0].shop) }}</div></div>
+      <div class="card kpi"><div class="label">Teuerster</div><div class="wert">{{ e.angebote[-1].preis|eur }}</div><div class="unter">{{ shop_name(e.angebote[-1].shop) }}</div></div>
+      <div class="card kpi"><div class="label">Angebote</div><div class="wert">{{ e.angebote|length }}</div><div class="unter">aus {{ e.angebote|map(attribute="shop")|unique|list|length }} Shops</div></div>
+      {% if e.markt_median %}<div class="card kpi"><div class="label">Median andere Shops</div><div class="wert">{{ e.markt_median|eur }}</div><div class="unter">Vergleichswert</div></div>{% endif %}
+    </div>
+    <div class="card" style="margin-top:20px">
+      <div class="card-head"><h2>Ergebnisse</h2><span class="muted klein">Spalten anklicken zum Sortieren</span></div>
+      <div class="tabelle"><table class="sortierbar">
+        <thead><tr><th data-sort class="num">Preis</th><th data-sort>Shop</th><th data-sort>Produkt</th></tr></thead>
+        <tbody>{% for a in e.angebote[:60] %}
+          <tr class="{{ 'bester' if loop.first }}"><td class="num" data-wert="{{ a.preis }}"><b>{{ a.preis|eur }}</b>{% if a.rabatt_prozent %}<div class="klein" style="color:var(--good-ink)">−{{ "%.0f"|format(a.rabatt_prozent) }} %</div>{% endif %}</td>
+          <td data-wert="{{ shop_name(a.shop) }}">{{ shop_name(a.shop) }}{% if a.aktion %} <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}</td>
+          <td class="name">{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }} {{ icon("extern", "s") }}</a>{% else %}{{ a.name }}{% endif %}</td></tr>
         {% endfor %}</tbody>
       </table></div>
-    {% endif %}
-    <form method="post" action="{{ url_for('beobachten') }}" class="suche" style="margin-top:14px">
-      <input type="hidden" name="q" value="{{ s.artikel.suche }}">
-      <input type="hidden" name="min_preis" value="{{ s.artikel.min_preis or '' }}">
-      <input type="text" name="zielpreis" inputmode="decimal" placeholder="Zielpreis € (optional)" style="flex:0 1 180px">
-      <button>Beobachten + Preisalarm</button>
-    </form>
+      {% if e.fehler %}<div class="card-pad klein muted" style="border-top:1px solid var(--border)">{{ icon("info", "s") }} Nicht erreichbar: {{ e.fehler }}</div>{% endif %}
+    </div>
   {% endif %}
-  <p><a href="{{ url_for('index') }}">← Zurück</a></p>
-</section>
+  <form method="post" action="{{ url_for('beobachten') }}" class="card card-pad" style="margin-top:20px">
+    <h2 style="margin-bottom:12px">{{ icon("glocke") }} Beobachten &amp; Preisalarm</h2>
+    <input type="hidden" name="q" value="{{ s.artikel.suche }}">
+    <input type="hidden" name="min_preis" value="{{ s.artikel.min_preis or '' }}">
+    <input type="hidden" name="kategorie" value="{{ s.artikel.kategorie or 'alle' }}">
+    <div class="zeile"><input type="text" name="zielpreis" inputmode="decimal" placeholder="Zielpreis € (optional)" style="max-width:220px">
+      <button class="btn">{{ icon("plus") }} Beobachten</button></div>
+    <p class="muted klein" style="margin:8px 0 0">Preis wird ab jetzt bei jeder Prüfung gespeichert – mit Verlauf und Meldung bei Zielpreis oder Schnäppchen.</p>
+  </form>
+{% endif %}
 {% endblock %}

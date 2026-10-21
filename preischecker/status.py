@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from . import db
+from .sources.shops import shop_name
 
 
 def produkt_status(artikel: dict) -> dict:
@@ -9,7 +10,8 @@ def produkt_status(artikel: dict) -> dict:
     return {
         "bester_preis": e.get("bester_preis"), "shop": best.get("shop"), "name": best.get("name"),
         "url": best.get("url"),
-        "anzeige": f"{best['preis']:.2f}".replace(".", ",") + f" € bei {best['shop']}" if best else None,
+        "anzeige": f"{best['preis']:.2f}".replace(".", ",") + f" € bei {shop_name(best['shop'])}" if best else None,
+        "shop_name": shop_name(best["shop"]) if best else None,
         "aktion": best.get("aktion", False), "alter_preis": best.get("alter_preis"),
         "rabatt_prozent": best.get("rabatt_prozent"),
         "zielpreis": artikel.get("zielpreis"), "ziel_erreicht": e.get("ziel_erreicht", False),

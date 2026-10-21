@@ -1,117 +1,99 @@
 {% extends "base.html" %}
-{% set seite = "index" %}
-{% block aktionen %}
-  <form method="post" action="{{ url_for('pruefen') }}">
-    <button {% if laeuft %}disabled{% endif %}>{% if laeuft %}Prüfung läuft …{% else %}Jetzt prüfen{% endif %}</button>
-  </form>
-{% endblock %}
+{% from "_makros.html" import icon, delta, empfehlung_icon %}
 {% block inhalt %}
-<section>
-  <h2>Schnellsuche</h2>
-  <form method="post" action="{{ url_for('suche_starten') }}" class="suche">
-    <input type="text" name="q" placeholder="Was suchst du? z. B. Dyson V15, AirPods Pro 2" required>
-    <input type="text" name="min_preis" inputmode="decimal" placeholder="ab € (optional)" title="Mindestpreis, filtert Zubehör">
-    <button>Suchen</button>
+
+<section class="card hero">
+  <h1>Was suchst du?</h1>
+  <p>Durchsucht Preisvergleiche, Elektronikmärkte und Online-Shops gleichzeitig.</p>
+  <form method="post" action="{{ url_for('suche_starten') }}" class="suchfeld">
+    <div class="q">{{ icon("suche") }}<input type="search" name="q" placeholder="z. B. Dyson V15, AirPods Pro 2, RX 9070 XT" required autocomplete="off"></div>
+    <select name="kategorie" aria-label="Shops">
+      {% for k, name in KATEGORIEN.items() %}<option value="{{ k }}">{{ name.split(" (")[0] }}</option>{% endfor %}
+    </select>
+    <input type="text" name="min_preis" inputmode="decimal" placeholder="ab … €" title="Mindestpreis – filtert Zubehör">
+    <button class="btn">{{ icon("suche") }} Suchen</button>
   </form>
-  <p class="muted" style="margin:6px 0 0;font-size:13px">Sucht bei Geizhals, Alternate, Mindfactory. Dauert ca. 30–60 Sekunden.</p>
 </section>
 
+<div class="kpis" style="margin-top:20px">
+  <div class="card kpi"><div class="label">Beobachtete Artikel</div><div class="wert">{{ karten|length }}</div>
+    <div class="unter">{{ shops|selectattr("aktiv")|list|length }} Shops aktiv</div></div>
+  <div class="card kpi"><div class="label">Schnäppchen &amp; Zielpreise</div>
+    <div class="wert" {% if schnaeppchen %}style="color:var(--good-ink)"{% endif %}>{{ schnaeppchen }}</div>
+    <div class="unter">gerade erreicht</div></div>
+  <div class="card kpi"><div class="label">Letzte Prüfung</div><div class="wert" style="font-size:20px">{{ letzte_pruefung|zeit_rel }}</div>
+    <div class="unter">{{ letzte_pruefung|datum }}</div></div>
+  <div class="card kpi"><div class="label">Nächste Prüfung</div><div class="wert" style="font-size:20px">{{ naechste|zeit_rel if naechste else "–" }}</div>
+    <div class="unter">automatisch</div></div>
+</div>
 
-{% if produkte %}
-<section>
-  <h2>Produkte</h2>
-  <div class="scroll"><table>
-    <thead><tr><th>Suche</th><th class="num">Bester Preis</th><th>Shop</th><th class="num">Ziel</th><th class="num">Tiefst</th><th>Stand</th></tr></thead>
-    <tbody>
-    {% for p in produkte %}{% set e = p.letzte %}
-      <tr>
-        <td>{{ p.artikel.suche }}</td>
-        {% if e and e.angebote %}{% set a = e.angebote[0] %}
-          <td class="num {{ 'good' if e.ziel_erreicht or e.schnaeppchen }}"><b>{{ "%.2f"|format(a.preis) }} €</b>
-            {% if e.schnaeppchen %}<span class="tag" title="{{ e.gruende|join(' · ') }}">Schnäppchen</span>{% elif a.aktion %}<span class="tag">Aktion</span>{% endif %}</td>
-          <td>{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener" title="{{ a.name }}">{{ a.shop }}</a>{% else %}{{ a.shop }}{% endif %}</td>
-        {% else %}
-          <td class="num muted">–</td><td class="muted">{{ e.fehler if e else "noch nicht geprüft" }}</td>
-        {% endif %}
-        <td class="num">{{ "%.2f"|format(p.artikel.zielpreis) if p.artikel.zielpreis else "–" }}</td>
-        <td class="num">{{ "%.2f"|format(p.tiefst) if p.tiefst is not none else "–" }}</td>
-        <td class="muted">{{ e.zeit if e else "" }}</td>
-      </tr>
-      {% if e and e.gruende %}<tr><td colspan="6" class="good">{{ e.gruende|join(" · ") }}</td></tr>{% endif %}
-      {% if e and e.angebote|length > 1 %}
-      <tr><td colspan="6"><details><summary class="muted">{{ e.angebote|length }} Angebote</summary>
-        <table>{% for a in e.angebote[:10] %}
-          <tr><td class="num">{{ "%.2f"|format(a.preis) }} €{% if a.rabatt_prozent %} <span class="muted">−{{ "%.0f"|format(a.rabatt_prozent) }}%</span>{% endif %}</td><td>{{ a.shop }}</td>
-          <td style="white-space:normal">{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</td></tr>
-        {% endfor %}</table>
-      </details></td></tr>
+<div class="section-head"><h2>Deine Artikel</h2><p class="muted klein">Preise werden bei jeder Prüfung gespeichert</p></div>
+<div class="grid-karten">
+{% for k in karten %}{% set e = k.letzte %}{% set best = k.best %}
+  <a class="card pk" href="{{ url_for('produkt', s=k.slug) }}">
+    <div class="kopf">
+      <span class="chip">{{ icon("laden", "s") }} {{ k.kategorie }}</span>
+      {% if e.schnaeppchen %}<span class="chip gut">{{ icon("blitz", "s") }} Schnäppchen</span>
+      {% elif k.k.messungen %}<span class="chip {{ k.k.empfehlung.stufe }}">{{ empfehlung_icon(k.k.empfehlung.stufe) }} {{ k.k.empfehlung.text }}</span>{% endif %}
+    </div>
+    <h3>{{ k.artikel.suche }}</h3>
+    {% if best %}
+      <div class="preis"><b>{{ best.preis|eur }}</b>{{ delta(k.k.aenderung, k.k.aenderung_prozent) }}</div>
+      <div class="wo">bei <b>{{ shop_name(best.shop) }}</b> · {{ e.zeit|zeit_rel }}{% if best.aktion %} · <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}</div>
+      <div class="spark" data-spark="{{ k.spark|tojson|forceescape }}"></div>
+      <div class="fuss">
+        <span>Tiefst <b>{{ k.k.tiefst|eur }}</b></span>
+        <span>Ø 30 T <b>{{ k.k.schnitt30|eur }}</b></span>
+        <span><b>{{ k.shops_mit_preis }}</b>/{{ k.shops_gesamt }} Shops</span>
+      </div>
+      {% if k.artikel.zielpreis %}{% set erreicht = best.preis <= k.artikel.zielpreis %}
+      <div class="ziel">
+        <div class="bahn"><span class="{{ 'erreicht' if erreicht }}" style="width:{{ [100, (k.artikel.zielpreis / best.preis * 100)|round]|min }}%"></span></div>
+        <div class="txt"><span>Ziel {{ k.artikel.zielpreis|eur }}</span><span>{% if erreicht %}erreicht ✓{% else %}noch {{ (best.preis - k.artikel.zielpreis)|eur }}{% endif %}</span></div>
+      </div>
       {% endif %}
-    {% endfor %}
-    </tbody>
-  </table></div>
-</section>
+    {% else %}
+      <div class="wo" style="margin-top:6px">{{ e.fehler or "Noch nicht geprüft – startet mit der nächsten Prüfung." }}</div>
+      <div class="spark" data-spark="[]"></div>
+    {% endif %}
+  </a>
+{% endfor %}
+  <div class="card pk leer">
+    <div>{{ icon("plus") }}<div style="margin-top:6px">Artikel hinzufügen:<br>oben suchen und „Beobachten“ klicken</div></div>
+  </div>
+</div>
+
+{% if vertraege %}
+<div class="section-head"><h2>Verträge</h2><p class="muted klein">Vergleich mit Check24</p></div>
+<div class="grid-karten">
+{% for v in vertraege %}{% set e = v.letzte %}
+  <div class="card card-pad">
+    <div class="zeile"><h3>{{ v.name }}</h3><span class="spacer"></span>
+      {% if e and e.beste_ersparnis_jahr and e.beste_ersparnis_jahr > 0 %}<span class="chip gut">{{ icon("check", "s") }} Wechsel lohnt</span>{% endif %}</div>
+    {% if not e %}<p class="muted">Noch nicht geprüft.</p>
+    {% else %}
+      <div class="kpis" style="grid-template-columns:1fr 1fr;margin-top:12px">
+        <div><div class="muted klein">Aktuell / Jahr</div><div style="font-size:20px;font-weight:700">{{ e.aktuell.kosten_jahr|eur }}</div><div class="klein ink2">{{ e.aktuell.anbieter }}</div></div>
+        {% if e.angebote %}<div><div class="muted klein">Günstigster / Jahr</div><div style="font-size:20px;font-weight:700">{{ e.angebote[0].kosten_jahr|eur }}</div><div class="klein ink2">{{ e.angebote[0].anbieter }}</div></div>{% endif %}
+      </div>
+      {% if e.beste_ersparnis_jahr is not none %}<p class="klein" style="margin:12px 0 0">Ersparnis: <b style="color:var({{ '--good-ink' if e.beste_ersparnis_jahr > 0 else '--critical-ink' }})">{{ e.beste_ersparnis_jahr|eur }} / Jahr</b>{% if e.aktuell.kuendigen_bis %} · kündigen bis {{ e.aktuell.kuendigen_bis|datum }}{% endif %}</p>{% endif %}
+      {% if e.fehler %}<p class="klein" style="color:var(--critical-ink);margin:8px 0 0">{{ e.fehler }}</p>{% endif %}
+    {% endif %}
+  </div>
+{% endfor %}
+</div>
 {% endif %}
 
-{% if not daten and not produkte %}<section>Keine Kategorie aktiv. <code>config.yaml</code> prüfen.</section>{% endif %}
-
-{% for kat, d in daten.items() %}
-<section>
-  <h2>{{ "Strom" if kat == "strom" else "Internet" }}</h2>
-  {% set e = d.letzte %}
-  {% if not e %}
-    <p class="muted">Noch keine Prüfung gelaufen.</p>
-  {% else %}
-    <p class="muted">Stand: {{ e.zeit }}</p>
-    {% if e.fehler %}<p class="err">{{ e.fehler }}</p>{% endif %}
-    <div class="kpis">
-      <div class="kpi"><b>{{ "%.2f"|format(e.aktuell.kosten_jahr) }} €</b><span>aktuell/Jahr · {{ e.aktuell.anbieter }}</span></div>
-      {% if e.angebote %}
-      <div class="kpi"><b>{{ "%.2f"|format(e.angebote[0].kosten_jahr) }} €</b><span>günstigstes/Jahr · {{ e.angebote[0].anbieter }}</span></div>
-      <div class="kpi"><b class="{{ 'good' if e.beste_ersparnis_jahr > 0 else 'bad' }}">{{ "%+.2f"|format(e.beste_ersparnis_jahr) }} €</b><span>Ersparnis/Jahr</span></div>
-      {% endif %}
-      {% if e.aktuell.kuendigen_bis %}<div class="kpi"><b>{{ e.aktuell.kuendigen_bis }}</b><span>kündigen bis</span></div>{% endif %}
+<div class="section-head"><h2>Shops</h2><p class="muted klein">Status der letzten Abfrage</p></div>
+<div class="card">
+  <div class="shopgrid">
+  {% for s in shops %}
+    <div class="{{ 'aus' if not s.aktiv }}" title="{{ s.status.fehler if s.status and s.status.fehler else '' }}">
+      <span class="punkt {{ s.zustand }}" aria-hidden="true"></span>
+      <div><div class="n">{{ s.name }}</div>
+        <div class="s">{% if not s.aktiv %}ausgeschaltet{% else %}{{ s.text }}{% if s.status %} · {{ s.status.zeit|zeit_rel }}{% endif %}{% endif %}</div></div>
     </div>
-    {% if e.angebote %}
-    <div class="scroll"><table>
-      <thead><tr><th>Anbieter</th><th>Tarif</th>
-        {% if kat == "strom" %}<th class="num">ct/kWh</th><th class="num">Grund €/M</th>{% else %}<th class="num">Mbit/s</th><th class="num">Ø €/Monat</th>{% endif %}
-        <th class="num">Bonus</th><th class="num">€/Jahr</th><th class="num">Ersparnis</th></tr></thead>
-      <tbody>
-      {% for a in e.angebote[:15] %}
-        <tr><td>{{ a.anbieter }}</td><td>{{ a.tarif }}</td>
-        {% if kat == "strom" %}
-          <td class="num">{{ "%.2f"|format(a.arbeitspreis_ct) if a.arbeitspreis_ct is not none else "–" }}</td>
-          <td class="num">{{ "%.2f"|format(a.grundpreis_monat) if a.grundpreis_monat is not none else "–" }}</td>
-        {% else %}
-          <td class="num">{{ a.download_mbit or "–" }}</td>
-          <td class="num">{{ "%.2f"|format(a.monat_effektiv) }}</td>
-        {% endif %}
-        <td class="num">{{ "%.0f"|format(a.bonus) if a.bonus else "–" }}</td>
-        <td class="num">{{ "%.2f"|format(a.kosten_jahr) }}</td>
-        <td class="num {{ 'good' if a.ersparnis_jahr > 0 else 'bad' }}">{{ "%+.2f"|format(a.ersparnis_jahr) }}</td></tr>
-      {% endfor %}
-      </tbody>
-    </table></div>
-    {% endif %}
-  {% endif %}
-  {% if d.verlauf|length > 1 %}
-  <details><summary class="muted">Verlauf</summary>
-    <div class="scroll"><table>
-      <thead><tr><th>Zeit</th><th class="num">aktuell €/J</th><th class="num">bestes €/J</th><th class="num">Ersparnis</th></tr></thead>
-      <tbody>{% for v in d.verlauf|reverse %}
-        <tr><td>{{ v.zeit }}</td><td class="num">{{ "%.2f"|format(v.aktuell_jahr) if v.aktuell_jahr is not none else "–" }}</td>
-        <td class="num">{{ "%.2f"|format(v.bestes_jahr) if v.bestes_jahr is not none else "–" }}</td>
-        <td class="num">{{ "%+.2f"|format(v.ersparnis_jahr) if v.ersparnis_jahr is not none else (v.fehler or "–") }}</td></tr>
-      {% endfor %}</tbody>
-    </table></div>
-  </details>
-  {% endif %}
-</section>
-{% endfor %}
-<footer class="muted" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px">
-  <span>{% if version["version"] %}Version: {{ version["version"] }}{% endif %}{% if version["update"] %} · Update: {{ version["update"] }}{% endif %}</span>
-  {% if not addon %}<form method="post" action="{{ url_for('update_anfordern') }}" onsubmit="return confirm('Von GitHub aktualisieren und neu starten?')">
-    <button style="background:var(--muted)">Aktualisieren</button>
-  </form>{% else %}<span>Updates über Home Assistant → Einstellungen → Add-ons</span>{% endif %}
-</footer>
+  {% endfor %}
+  </div>
+</div>
 {% endblock %}

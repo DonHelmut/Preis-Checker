@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from datetime import date
 
+from .sources.shops import KATEGORIEN, SHOPS
+
 # (Pfad, Beschriftung, Typ, Hinweis)
 ABSCHNITTE = [
     ("Adresse", "Für Strom- und Internet-Verfügbarkeit", [
@@ -41,6 +43,7 @@ ABSCHNITTE = [
         ("produkte.nur_lieferbar", "Nur lieferbare Angebote", "bool", ""),
         ("produkte.schnaeppchen_prozent", "Schnäppchen ab", "float", "% unter eigenem Durchschnitt / Shop-Rabatt"),
         ("produkte.markt_prozent", "Preisfehler ab", "float", "% unter anderen Shops"),
+        ("produkte.parallel", "Gleichzeitige Abfragen", "int", "Browser-Tabs parallel (je ca. 250 MB RAM)"),
     ]),
     ("Prüfung", "", [
         ("pruefung.intervall_stunden", "Prüfen alle", "float", "Stunden (6 = 4× täglich)"),
@@ -54,8 +57,7 @@ ABSCHNITTE = [
     ]),
 ]
 
-QUELLEN = ["geizhals", "alternate", "mindfactory"]
-PRODUKT_FELDER = ["suche", "zielpreis", "min_preis", "max_preis", "darf_nicht_enthalten"]
+PRODUKT_FELDER = ["suche", "kategorie", "zielpreis", "min_preis", "max_preis", "darf_nicht_enthalten"]
 
 
 def get(cfg: dict, pfad: str):
@@ -117,7 +119,8 @@ def uebernehmen(cfg: dict, form) -> list[str]:
     if "ha_dienste_feld" in form:  # nur wenn die Checkboxen angezeigt wurden
         put(cfg, "benachrichtigung.ha_dienste", form.getlist("ha_dienste") or None)
         put(cfg, "benachrichtigung.ha_dienst", None)
-    put(cfg, "produkte.quellen", [q for q in QUELLEN if f"quelle_{q}" in form] or None)
+    if "quellen_feld" in form:
+        put(cfg, "produkte.quellen", [k for k in SHOPS if f"quelle_{k}" in form] or None)
     liste = []
     spalten = {f: form.getlist(f"p_{f}") for f in PRODUKT_FELDER}
     for i, suche in enumerate(spalten["suche"]):
@@ -125,6 +128,9 @@ def uebernehmen(cfg: dict, form) -> list[str]:
         if not suche:
             continue
         artikel = {"suche": suche}
+        kat = spalten["kategorie"][i] if i < len(spalten["kategorie"]) else ""
+        if kat in KATEGORIEN and kat != "alle":
+            artikel["kategorie"] = kat
         for f in ("zielpreis", "min_preis", "max_preis"):
             try:
                 wert = _zahl(spalten[f][i] if i < len(spalten[f]) else "", "float")

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0
+- Komplett neue Oberfläche: Produktkarten mit Mini-Verlauf, Detailseite mit interaktivem Preisdiagramm (Zeitraum, Shops ein-/ausblenden), Shop-Vergleich, Dunkelmodus
+- Preisverlauf: jeder Shop-Preis wird bei jeder Prüfung gespeichert
+- Statistik: Tiefst-/Höchstpreis, Ø 30 Tage, Schwankung, Trend, Kaufempfehlung
+- 17 Shops: Geizhals, idealo, MediaMarkt, Saturn, Amazon, Otto, Cyberport, notebooksbilliger, Galaxus, expert, Euronics, Kaufland, Conrad, Alternate, Mindfactory, Caseking, Proshop
+- Kategorie je Artikel (Elektronik, PC-Hardware, Allgemein, Alle)
+- Parallele Abfrage mit Live-Fortschritt, Shop-Status-Übersicht
+- Genauere Treffer: „Switch 2“ passt nicht mehr auf „Switch V2 2022“
+- Fix: Check24-Verbrauchsfeld hinter Button, Geizhals-Zeitüberschreitung
+
 ## 0.3.0
 - Benachrichtigung per Checkbox: jedes Handy aus HA einzeln anhaken (mehrere möglich)
 

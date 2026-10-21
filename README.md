@@ -1,7 +1,7 @@
 # Preis-Checker
 
 - **Verträge**: eigene Strom- und Internetverträge regelmäßig mit aktuellen Check24-Angeboten vergleichen.
-- **Produkte**: Suchbegriffe (z. B. „Nintendo Switch 2“, „RX 9070 XT“) bei Geizhals, Alternate, Mindfactory (+ eigene Shops) beobachten, günstigsten Preis finden, Preisalarm bei Zielpreis.
+- **Produkte**: Suchbegriffe (z. B. „Nintendo Switch 2“, „RX 9070 XT“) in 17 deutschen Shops und Preisvergleichen beobachten (Geizhals, idealo, MediaMarkt, Saturn, Amazon, Otto, Alternate, Mindfactory …), Preisverlauf mit Statistik und Kaufempfehlung, Preisalarm bei Zielpreis oder Schnäppchen.
 
 Meldet sich per Telegram / ntfy / Home-Assistant-Webhook, wenn sich ein Wechsel lohnt oder der Zielpreis erreicht ist.
 
