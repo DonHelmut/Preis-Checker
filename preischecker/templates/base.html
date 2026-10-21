@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preis-Checker</title>
+<style>
+:root { --bg:#f6f7f9; --card:#fff; --fg:#1b1f24; --muted:#667; --line:#e3e6ea; --good:#14804a; --bad:#b42318; --accent:#2457c5; }
+@media (prefers-color-scheme: dark) { :root { --bg:#111418; --card:#1a1e24; --fg:#e6e8eb; --muted:#9aa3ad; --line:#2a3038; --good:#3ccf7f; --bad:#ff6b5f; --accent:#7aa2ff; } }
+* { box-sizing:border-box; }
+body { margin:0; font:15px/1.45 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+main { max-width:1000px; margin:0 auto; padding:16px; }
+header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+h1 { font-size:22px; margin:8px 0; }
+section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:16px 0; }
+h2 { margin:0 0 8px; font-size:18px; }
+.kpis { display:flex; gap:24px; flex-wrap:wrap; margin:8px 0 12px; }
+.kpi b { display:block; font-size:22px; }
+.kpi span { color:var(--muted); font-size:13px; }
+.good { color:var(--good); } .bad { color:var(--bad); } .muted { color:var(--muted); }
+.scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:14px; }
+th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
+button[disabled] { opacity:.6; }
+a { color:var(--accent); }
+.tag { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px; font-size:12px; background:var(--good); color:var(--card); }
+.err { background:color-mix(in srgb, var(--bad) 12%, transparent); padding:8px 10px; border-radius:6px; }
+.nav { display:flex; gap:14px; font-size:14px; }
+.nav a { text-decoration:none; color:var(--muted); }
+.nav a.aktiv { color:var(--fg); font-weight:600; }
+.ok { background:color-mix(in srgb, var(--good) 14%, transparent); padding:8px 10px; border-radius:6px; }
+label.feld { display:grid; grid-template-columns: minmax(140px, 220px) 1fr; gap:4px 12px; align-items:center; padding:6px 0; }
+label.feld small { grid-column:2; color:var(--muted); font-size:12px; }
+input[type=text], input[type=number], input[type=date], input[type=password] { width:100%; max-width:360px; padding:7px 9px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); font:inherit; }
+input[type=checkbox] { width:18px; height:18px; justify-self:start; }
+table.edit input { max-width:none; }
+table.edit input[name=p_suche] { min-width:180px; }
+table.edit input[name=p_darf_nicht_enthalten] { min-width:200px; }
+@media (max-width:560px) { label.feld { grid-template-columns:1fr; } label.feld small { grid-column:1; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Preis-Checker</h1>
+  <nav class="nav">
+    <a href="./" class="{{ 'aktiv' if seite == 'index' }}">Übersicht</a>
+    <a href="einstellungen" class="{{ 'aktiv' if seite == 'einstellungen' }}">Einstellungen</a>
+  </nav>
+  {% block aktionen %}{% endblock %}
+</header>
+{% block inhalt %}{% endblock %}
+</main>
+</body>
+</html>

@@ -4,6 +4,8 @@ import json
 import logging
 import urllib.request
 
+from . import ha
+
 log = logging.getLogger(__name__)
 
 
@@ -69,6 +71,8 @@ def _verteilen(cfg: dict, text: str, payload: dict) -> None:
             _post(f"https://ntfy.sh/{n['ntfy_topic']}", text.encode("utf-8"), {"Title": "Preis-Checker"})
         if n.get("webhook_url"):
             _post(n["webhook_url"], json.dumps({"text": text, **payload}).encode(), {"Content-Type": "application/json"})
+        if n.get("ha_dienst") and ha.aktiv():
+            ha.benachrichtigen(n["ha_dienst"], text)
     except Exception as e:  # Benachrichtigung darf den Lauf nicht abbrechen
         log.error("Benachrichtigung fehlgeschlagen: %s", e)
 
@@ -81,3 +85,7 @@ def senden(cfg: dict, ergebnis: dict) -> None:
     text = text_fuer(ergebnis)
     _verteilen(cfg, text, {"kategorie": ergebnis["kategorie"], "ersparnis_jahr": ersparnis,
                            "bestes_angebot": {k: ergebnis["angebote"][0].get(k) for k in ("anbieter", "tarif", "kosten_jahr")}})
+
+
+def test(cfg: dict) -> None:
+    _verteilen(cfg, "Preis-Checker: Testnachricht – Benachrichtigung funktioniert.", {"kategorie": "test"})

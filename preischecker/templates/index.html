@@ -1,42 +1,12 @@
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Preis-Checker</title>
-<style>
-:root { --bg:#f6f7f9; --card:#fff; --fg:#1b1f24; --muted:#667; --line:#e3e6ea; --good:#14804a; --bad:#b42318; --accent:#2457c5; }
-@media (prefers-color-scheme: dark) { :root { --bg:#111418; --card:#1a1e24; --fg:#e6e8eb; --muted:#9aa3ad; --line:#2a3038; --good:#3ccf7f; --bad:#ff6b5f; --accent:#7aa2ff; } }
-* { box-sizing:border-box; }
-body { margin:0; font:15px/1.45 system-ui,sans-serif; background:var(--bg); color:var(--fg); }
-main { max-width:1000px; margin:0 auto; padding:16px; }
-header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-h1 { font-size:22px; margin:8px 0; }
-section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:16px 0; }
-h2 { margin:0 0 8px; font-size:18px; }
-.kpis { display:flex; gap:24px; flex-wrap:wrap; margin:8px 0 12px; }
-.kpi b { display:block; font-size:22px; }
-.kpi span { color:var(--muted); font-size:13px; }
-.good { color:var(--good); } .bad { color:var(--bad); } .muted { color:var(--muted); }
-.scroll { overflow-x:auto; }
-table { width:100%; border-collapse:collapse; font-size:14px; }
-th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
-td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
-button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 14px; font-size:14px; cursor:pointer; }
-button[disabled] { opacity:.6; }
-a { color:var(--accent); }
-.tag { display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px; font-size:12px; background:var(--good); color:var(--card); }
-.err { background:color-mix(in srgb, var(--bad) 12%, transparent); padding:8px 10px; border-radius:6px; }
-</style>
-</head>
-<body>
-<main>
-<header>
-  <h1>Preis-Checker</h1>
-  <form method="post" action="/pruefen">
+{% extends "base.html" %}
+{% set seite = "index" %}
+{% block aktionen %}
+  <form method="post" action="pruefen">
     <button {% if laeuft %}disabled{% endif %}>{% if laeuft %}Prüfung läuft …{% else %}Jetzt prüfen{% endif %}</button>
   </form>
-</header>
+{% endblock %}
+{% block inhalt %}
+
 
 {% if produkte %}
 <section>
@@ -131,10 +101,8 @@ a { color:var(--accent); }
 {% endfor %}
 <footer class="muted" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px">
   <span>Version: {{ version.version or "unbekannt" }}{% if version.update %} · Update: {{ version.update }}{% endif %}</span>
-  <form method="post" action="/api/update" onsubmit="return confirm('Von GitHub aktualisieren und neu starten?')">
+  {% if not addon %}<form method="post" action="api/update" onsubmit="return confirm('Von GitHub aktualisieren und neu starten?')">
     <button style="background:var(--muted)">Aktualisieren</button>
-  </form>
+  </form>{% else %}<span>Updates über Home Assistant → Einstellungen → Add-ons</span>{% endif %}
 </footer>
-</main>
-</body>
-</html>
+{% endblock %}

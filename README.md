@@ -9,30 +9,36 @@ Meldet sich per Telegram / ntfy / Home-Assistant-Webhook, wenn sich ein Wechsel 
 - Läuft am besten auf einer privaten VM/LXC (private IP, Datacenter-IPs werden oft geblockt).
 - Nur für private Nutzung, wenige Abrufe (Standard: 1× täglich). Automatisierte Abfragen sind laut Check24-AGB nicht vorgesehen.
 
-## Installation (Proxmox-VM mit Docker)
+## Installation A: Home-Assistant-Add-on (empfohlen, alles per Klick)
+
+Voraussetzung: Home Assistant OS, ca. 3 GB freier Speicher.
+
+1. HA → **Einstellungen → Add-ons → Add-on Store** → ⋮ oben rechts → **Repositories**
+2. `https://github.com/DonHelmut/Preis-Checker` einfügen → Hinzufügen
+3. Store neu laden → **Preis-Checker** → Installieren (dauert einige Minuten) → Starten, „In Seitenleiste anzeigen“ an
+4. Seitenleiste → Preis-Checker → **Einstellungen** ausfüllen → Speichern → Übersicht → **Jetzt prüfen**
+
+Sensoren (`sensor.preischecker_*`) entstehen automatisch. Updates erscheinen in HA unter Einstellungen → Updates.
+Details: [preis_checker/DOCS.md](preis_checker/DOCS.md)
+
+## Installation B: eigene VM mit Docker
 
 ```bash
 git clone https://github.com/DonHelmut/Preis-Checker.git
 cd Preis-Checker
-cp config.example.yaml config.yaml
-nano config.yaml          # eigene Vertragsdaten + Adresse eintragen
 docker compose up -d --build
 ```
+Weboberfläche: `http://<vm-ip>:8080` → **Einstellungen** ausfüllen. Config liegt in `config/config.yaml`.
 
-Weboberfläche: `http://<vm-ip>:8080` → „Jetzt prüfen“.
-
-## Ohne Docker
-
+Ohne Docker:
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 playwright install --with-deps chromium
-cp config.example.yaml config.yaml && nano config.yaml
-python -m preischecker pruefen          # einmal prüfen, Ergebnis im Terminal
-python -m preischecker serve            # Weboberfläche + Prüfung alle intervall_stunden
+python -m preischecker serve
 ```
 
-## Updates per Klick
+## Updates per Klick (nur VM)
 
 Einmalig auf der VM:
 ```bash
@@ -45,8 +51,7 @@ Danach aktualisieren über:
 - **Terminal**: `./deploy/update.sh` (`--force` baut auch ohne neue Commits neu)
 
 Ablauf: Anfrage legt `data/update.request` an → systemd startet `deploy/update.sh` → `git pull` + `docker compose up -d --build`.
-Log: `data/update.log`, Stand: `GET /api/version`. Die eigene `config.yaml` bleibt unberührt.
-Ist das GitHub-Repo privat, braucht `git pull` auf der VM Zugangsdaten (Deploy-Key oder Token).
+Log: `data/update.log`, Stand: `GET /api/version`. Die eigene Config bleibt unberührt.
 
 ## Befehle
 
@@ -57,7 +62,7 @@ Ist das GitHub-Repo privat, braucht `git pull` auf der VM Zugangsdaten (Deploy-K
 | `serve` | Weboberfläche (Port 8080) + Scheduler |
 | `test-benachrichtigung` | Testnachricht an alle Kanäle |
 
-In Docker: `docker compose exec preischecker python -m preischecker debug strom`
+VM/Docker: `docker compose exec preischecker python -m preischecker debug strom`
 
 ## Wie gerechnet wird
 

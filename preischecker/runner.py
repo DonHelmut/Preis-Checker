@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 
-from . import compare, db, notify
+from . import compare, db, ha, notify
 from .sources import browser, check24, shops
 
 log = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ def pruefen(cfg: dict, kategorien: list[str] | None = None, debug: bool = False)
             if not fehler:
                 notify.senden(cfg, ergebnis)
             ergebnisse.append({**ergebnis, "fehler": fehler})
+        ha.sync(cfg)
         return ergebnisse
     finally:
         _lock.release()

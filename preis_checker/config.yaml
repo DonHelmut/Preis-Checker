@@ -1,0 +1,19 @@
+name: Preis-Checker
+version: "0.1.0"
+slug: preis_checker
+description: Strom, Internet und Produktpreise vergleichen (Check24, Geizhals, Alternate, Mindfactory) mit Schnäppchen-Alarm
+url: https://github.com/DonHelmut/Preis-Checker
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8080
+panel_icon: mdi:tag-search
+panel_title: Preis-Checker
+homeassistant_api: true
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: Weboberfläche/API außerhalb von HA (optional)

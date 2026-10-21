@@ -54,12 +54,7 @@ def main() -> None:
         from .web import serve
         serve(args.config, args.host, args.port, not args.ohne_scheduler)
     elif args.cmd == "test-benachrichtigung":
-        cfg["pruefung"]["benachrichtigen_ab_euro_jahr"] = 0
-        notify.senden(cfg, {
-            "kategorie": "test", "beste_ersparnis_jahr": 123.0,
-            "aktuell": {"anbieter": "Alt", "kosten_jahr": 1000.0},
-            "angebote": [{"anbieter": "Neu", "tarif": "Test", "kosten_jahr": 877.0, "ersparnis_jahr": 123.0}],
-        })
+        notify.test(cfg)
         print("Gesendet (Fehler siehe Log).")
 
 

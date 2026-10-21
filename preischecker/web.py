@@ -7,14 +7,58 @@ from datetime import datetime
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-from . import db, runner
-from .config import DATA_DIR, load_config
+from . import db, ha, notify, runner, settings
+from .status import status_daten
+from .config import DATA_DIR, load_config, load_raw, save_raw
 
 log = logging.getLogger(__name__)
 
 
+class IngressPrefix:
+    """Home-Assistant-Ingress: Pfad-Präfix aus X-Ingress-Path übernehmen."""
+
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        prefix = environ.get("HTTP_X_INGRESS_PATH")
+        if prefix:
+            environ["SCRIPT_NAME"] = prefix.rstrip("/")
+        return self.app(environ, start_response)
+
+
 def create_app(config_path=None) -> Flask:
     app = Flask(__name__)
+    app.wsgi_app = IngressPrefix(app.wsgi_app)
+    app.jinja_env.globals.update(get=settings.get, anzeigen=settings.anzeigen)
+
+    def einstellungen_seite(cfg, **extra):
+        extra.setdefault("fehler", [])
+        return render_template("einstellungen.html", cfg=cfg, abschnitte=settings.ABSCHNITTE,
+                               quellen=settings.QUELLEN, **extra)
+
+    @app.get("/einstellungen")
+    def einstellungen():
+        return einstellungen_seite(load_raw(config_path), gespeichert=request.args.get("ok") == "1")
+
+    @app.post("/einstellungen")
+    def einstellungen_speichern():
+        cfg = load_raw(config_path)
+        fehler = settings.uebernehmen(cfg, request.form)
+        if fehler:
+            return einstellungen_seite(cfg, fehler=fehler), 400
+        save_raw(cfg, config_path)
+        return redirect(url_for("einstellungen", ok=1))
+
+    @app.post("/test-benachrichtigung")
+    def test_benachrichtigung():
+        cfg = load_raw(config_path)
+        fehler = settings.uebernehmen(cfg, request.form)
+        if fehler:
+            return einstellungen_seite(cfg, fehler=fehler), 400
+        save_raw(cfg, config_path)
+        notify.test(load_config(config_path))
+        return einstellungen_seite(load_raw(config_path), test=True)
 
     @app.get("/")
     def index():
@@ -31,7 +75,7 @@ def create_app(config_path=None) -> Flask:
                 produkte.append({"artikel": artikel, "letzte": db.letzte(kat),
                                  "tiefst": min(verlauf) if verlauf else None})
         return render_template("index.html", daten=daten, produkte=produkte, laeuft=runner.laeuft(),
-                               version=version_info())
+                               version=version_info(), addon=ha.aktiv())
 
     @app.post("/pruefen")
     def pruefen():
@@ -41,25 +85,7 @@ def create_app(config_path=None) -> Flask:
 
     @app.get("/api/status")
     def status():
-        cfg = load_config(config_path)
-        produkte = {}
-        for artikel in cfg["produkte"].get("liste") or []:
-            e = db.letzte(f"produkt:{artikel['suche']}") or {}
-            best = (e.get("angebote") or [{}])[0]
-            produkte[artikel["suche"]] = {
-                "bester_preis": e.get("bester_preis"), "shop": best.get("shop"), "name": best.get("name"),
-                "url": best.get("url"),
-                "anzeige": f"{best['preis']:.2f}".replace(".", ",") + f" € bei {best['shop']}" if best else None,
-                "aktion": best.get("aktion", False), "alter_preis": best.get("alter_preis"),
-                "rabatt_prozent": best.get("rabatt_prozent"),
-                "zielpreis": artikel.get("zielpreis"), "ziel_erreicht": e.get("ziel_erreicht", False),
-                "schnaeppchen": e.get("schnaeppchen", False), "gruende": e.get("gruende") or [],
-                "durchschnitt": e.get("durchschnitt"), "zeit": e.get("zeit"), "fehler": e.get("fehler"),
-                "top": [{k: a.get(k) for k in ("preis", "shop", "name", "url", "aktion")}
-                        for a in (e.get("angebote") or [])[:5]],
-            }
-        return jsonify({kat: db.letzte(kat) for kat in ("strom", "internet")}
-                       | {"produkte": produkte, "laeuft": runner.laeuft()})
+        return jsonify(status_daten(load_config(config_path)) | {"laeuft": runner.laeuft()})
 
     @app.post("/api/update")
     def update_anfordern():
@@ -105,4 +131,6 @@ def scheduler(config_path=None) -> None:
 def serve(config_path=None, host="0.0.0.0", port=8080, mit_scheduler=True) -> None:
     if mit_scheduler:
         threading.Thread(target=scheduler, args=(config_path,), daemon=True).start()
+    if ha.aktiv():
+        threading.Thread(target=ha.sync_schleife, args=(config_path,), daemon=True).start()
     create_app(config_path).run(host=host, port=port)

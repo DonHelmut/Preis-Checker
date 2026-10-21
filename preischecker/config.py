@@ -1,20 +1,38 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 
 import yaml
 
 DEFAULT_PATH = Path(os.environ.get("PREISCHECKER_CONFIG", "config.yaml"))
 DATA_DIR = Path(os.environ.get("PREISCHECKER_DATA", "data"))
+EXAMPLE_PATH = Path(__file__).resolve().parent.parent / "config.example.yaml"
+
+
+def load_raw(path: Path | str | None = None) -> dict:
+    """Config wie in der Datei (ohne Defaults). Legt sie beim ersten Start aus der Vorlage an."""
+    path = Path(path or DEFAULT_PATH)
+    if not path.exists():
+        if not EXAMPLE_PATH.exists():
+            raise SystemExit(f"Config fehlt: {path} (Vorlage: config.example.yaml)")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(EXAMPLE_PATH, path)
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def save_raw(cfg: dict, path: Path | str | None = None) -> None:
+    path = Path(path or DEFAULT_PATH)
+    tmp = path.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        yaml.safe_dump(cfg, f, allow_unicode=True, sort_keys=False)
+    tmp.replace(path)
 
 
 def load_config(path: Path | str | None = None) -> dict:
-    path = Path(path or DEFAULT_PATH)
-    if not path.exists():
-        raise SystemExit(f"Config fehlt: {path} (Vorlage: config.example.yaml)")
-    with open(path, encoding="utf-8") as f:
-        cfg = yaml.safe_load(f) or {}
+    cfg = load_raw(path)
     cfg.setdefault("standort", {})
     cfg.setdefault("pruefung", {})
     cfg.setdefault("benachrichtigung", {})

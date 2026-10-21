@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set seite = "einstellungen" %}
+{% block inhalt %}
+{% if gespeichert %}<p class="ok">Gespeichert. Gilt ab der nächsten Prüfung.</p>{% endif %}
+{% if test %}<p class="ok">Testnachricht gesendet – falls nichts ankommt, Werte prüfen.</p>{% endif %}
+{% for f in fehler %}<p class="err">{{ f }}</p>{% endfor %}
+
+<form method="post" action="einstellungen">
+{% for titel, hinweis, felder in abschnitte %}
+<section>
+  <h2>{{ titel }}</h2>
+  {% if hinweis %}<p class="muted">{{ hinweis }}</p>{% endif %}
+  {% for pfad, label, typ, tipp in felder %}{% set wert = get(cfg, pfad) %}
+  <label class="feld">
+    <span>{{ label }}</span>
+    {% if typ == "bool" %}
+      <input type="checkbox" name="{{ pfad }}" {% if wert %}checked{% endif %}>
+    {% elif typ in ("int", "float") %}
+      <input type="text" inputmode="decimal" name="{{ pfad }}" value="{{ anzeigen(wert, typ) }}">
+    {% elif typ == "date" %}
+      <input type="date" name="{{ pfad }}" value="{{ wert or '' }}">
+    {% elif typ == "password" %}
+      <input type="password" name="{{ pfad }}" value="" placeholder="{{ '•••••• (gespeichert)' if wert else '' }}" autocomplete="off">
+    {% else %}
+      <input type="text" name="{{ pfad }}" value="{{ wert or '' }}">
+    {% endif %}
+    {% if tipp %}<small>{{ tipp }}</small>{% endif %}
+  </label>
+  {% endfor %}
+  {% if titel.startswith("Produkt") %}
+  <label class="feld"><span>Quellen</span><span>
+    {% set aktiv = get(cfg, "produkte.quellen") or quellen %}
+    {% for q in quellen %}<label style="margin-right:14px"><input type="checkbox" name="quelle_{{ q }}" {% if q in aktiv %}checked{% endif %}> {{ q }}</label>{% endfor %}
+  </span></label>
+  {% endif %}
+</section>
+{% if titel.startswith("Produkt") %}
+<section>
+  <h2>Produkte</h2>
+  <p class="muted">Alle Wörter aus „Suche“ müssen im Produktnamen stehen. Mindestpreis + Ausschlusswörter filtern Zubehör. Zielpreis optional.</p>
+  <div class="scroll"><table class="edit" id="produkte">
+    <thead><tr><th>Suche</th><th>Zielpreis €</th><th>Min €</th><th>Max €</th><th>Ausschließen (Komma)</th><th></th></tr></thead>
+    <tbody>
+    {% for a in (get(cfg, "produkte.liste") or []) + [{}] %}
+      <tr>
+        <td><input type="text" name="p_suche" value="{{ a.suche or '' }}" placeholder="z. B. RX 9070 XT"></td>
+        <td><input type="text" inputmode="decimal" name="p_zielpreis" value="{{ anzeigen(a.zielpreis, 'float') }}" style="width:90px"></td>
+        <td><input type="text" inputmode="decimal" name="p_min_preis" value="{{ anzeigen(a.min_preis, 'float') }}" style="width:80px"></td>
+        <td><input type="text" inputmode="decimal" name="p_max_preis" value="{{ anzeigen(a.max_preis, 'float') }}" style="width:80px"></td>
+        <td><input type="text" name="p_darf_nicht_enthalten" value="{{ (a.darf_nicht_enthalten or [])|join(', ') }}"></td>
+        <td><button type="button" onclick="this.closest('tr').remove()" title="Entfernen" style="background:var(--muted)">✕</button></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <p><button type="button" onclick="neueZeile()" style="background:var(--muted)">+ Produkt</button></p>
+</section>
+{% endif %}
+{% endfor %}
+<p style="display:flex;gap:10px;flex-wrap:wrap">
+  <button>Speichern</button>
+  <button formaction="test-benachrichtigung" style="background:var(--muted)">Speichern + Testnachricht</button>
+</p>
+</form>
+<script>
+function neueZeile() {
+  const tb = document.querySelector('#produkte tbody');
+  const tr = tb.lastElementChild.cloneNode(true);
+  tr.querySelectorAll('input').forEach(i => i.value = '');
+  tb.appendChild(tr);
+}
+</script>
+{% endblock %}
