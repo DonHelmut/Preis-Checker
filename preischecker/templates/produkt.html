@@ -26,9 +26,9 @@
 <div class="kpis" style="margin-top:20px">
   <div class="card kpi"><div class="label">Aktuell günstigster</div>
     <div class="wert">{{ best.preis|eur if best else "–" }}</div>
-    <div class="unter">{% if best %}{{ shop_name(best.shop) }} · {{ delta(k.aenderung, k.aenderung_prozent) }}{% else %}noch keine Daten{% endif %}</div></div>
+    <div class="unter">{% if best %}{{ anbieter(best) }} ·{{ delta(k.aenderung, k.aenderung_prozent) }}{% else %}noch keine Daten{% endif %}</div></div>
   <div class="card kpi"><div class="label">Tiefstpreis</div><div class="wert" style="color:var(--good-ink)">{{ k.tiefst|eur }}</div>
-    <div class="unter">{% if k.tiefst_zeit %}{{ k.tiefst_zeit|datum }} · {{ shop_name(k.tiefst_shop) }}{% endif %}</div></div>
+    <div class="unter">{% if k.tiefst_zeit %}{{ k.tiefst_zeit|datum }} · {{ anbieter({"shop": k.tiefst_shop, "haendler": k.tiefst_haendler}) }}{% endif %}</div></div>
   <div class="card kpi"><div class="label">Ø 30 Tage</div><div class="wert">{{ k.schnitt30|eur }}</div>
     <div class="unter">aktuell {{ k.gegen_schnitt_prozent|prozent }} · Höchst {{ k.hoechst|eur }}</div></div>
   <div class="card kpi"><div class="label">Schwankung</div><div class="wert">{{ (k.schwankung_stufe or "–")|capitalize }}</div>
@@ -63,7 +63,7 @@
       <tbody>
       {% for v in d.vergleich %}
         <tr class="{{ 'bester' if loop.first and v.aktuell }}">
-          <td data-wert="{{ v.shop_name }}"><b>{{ v.shop_name }}</b>{% if v.aktion %} <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}
+          <td data-wert="{{ v.shop_name }}"><b>{{ v.shop_name }}</b>{% if v.haendler %}<div class="klein ink2">günstigster Händler: {{ v.haendler }}</div>{% endif %}{% if v.aktion %} <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}
             {% if not v.aktuell %}<div class="muted klein">zuletzt {{ v.zeit|zeit_rel }}</div>{% endif %}</td>
           <td class="num" data-wert="{{ v.preis }}"><b>{{ v.preis|eur }}</b></td>
           <td class="num" data-wert="{{ v.aenderung or 0 }}">{{ delta(v.aenderung) }}</td>
@@ -99,7 +99,7 @@
   <summary class="card-pad" style="cursor:pointer"><b>Alle Messungen als Tabelle</b> <span class="muted klein">({{ d.reihe|length }})</span></summary>
   <div class="tabelle"><table>
     <thead><tr><th>Zeitpunkt</th><th class="num">Bestpreis</th><th>Shop</th></tr></thead>
-    <tbody>{% for p in d.reihe|reverse %}<tr><td>{{ p.zeit|datum }}</td><td class="num">{{ p.preis|eur }}</td><td>{{ shop_name(p.shop) }}</td></tr>{% endfor %}</tbody>
+    <tbody>{% for p in d.reihe|reverse %}<tr><td>{{ p.zeit|datum }}</td><td class="num">{{ p.preis|eur }}</td><td>{{ anbieter(p) }}</td></tr>{% endfor %}</tbody>
   </table></div>
 </details>
 {% endif %}

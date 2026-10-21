@@ -39,7 +39,7 @@
     <h3>{{ k.artikel.suche }}</h3>
     {% if best %}
       <div class="preis"><b>{{ best.preis|eur }}</b>{{ delta(k.k.aenderung, k.k.aenderung_prozent) }}</div>
-      <div class="wo">bei <b>{{ shop_name(best.shop) }}</b> · {{ e.zeit|zeit_rel }}{% if best.aktion %} · <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}</div>
+      <div class="wo">bei <b>{{ anbieter(best) }}</b> · {{ e.zeit|zeit_rel }}{% if best.aktion %} · <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}</div>
       <div class="spark" data-spark="{{ k.spark|tojson|forceescape }}"></div>
       <div class="fuss">
         <span>Tiefst <b>{{ k.k.tiefst|eur }}</b></span>

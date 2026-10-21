@@ -80,6 +80,7 @@ class ProduktAngebot:
     lieferbar: bool | None = None  # None = unbekannt
     alter_preis: float | None = None  # Streichpreis/UVP
     aktion: bool = False              # Shop kennzeichnet Angebot/Deal
+    haendler: str | None = None       # bei Preisvergleichen: tatsächlicher Händler
     rohtext: str = field(default="", repr=False)
 
     def to_dict(self) -> dict:

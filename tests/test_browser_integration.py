@@ -67,3 +67,31 @@ def test_turnstile_captcha_gilt_als_sperre(tmp_path):
         assert b.schutzseite_abwarten(page, 2) is False
         page.set_content("<html><head><title>Suche</title></head><body>ok</body></html>")
         assert b.schutzseite_abwarten(page, 2) is True
+
+
+def test_haendler_aus_preisvergleich(tmp_path, monkeypatch):
+    """Suchseite im Geizhals-Stil → Produktseite mit Händlerliste → günstigster Händler wird übernommen."""
+    from preischecker import worker
+    produkt = tmp_path / "produkt.html"
+    produkt.write_text("""<html><body><h1>Sonos Beam (Gen 2)</h1><div class="angebote">
+      <div class="offer"><span>€ 469,00</span><img alt="MediaMarkt"><span>lagernd</span></div>
+      <div class="offer"><span>€ 449,00</span><span>Versand ab € 4,99</span><a href="#">Alternate</a></div>
+      <div class="offer"><span>€ 479,00</span><span>kaufen bei technik-shop24.de</span></div>
+    </div></body></html>""")
+    suche = tmp_path / "suche.html"
+    suche.write_text(f"""<html><body><div class="liste">
+      <a href="file://{produkt}"><div>Sonos Beam (Gen 2) schwarz</div><span>ab € 449,00</span></a>
+      <a href="file://{produkt}"><div>Sonos Beam (Gen 2) Wandhalterung</div><span>ab € 39,00</span></a>
+      <a href="file://{produkt}"><div>Sonos Arc Ultra</div><span>ab € 899,00</span></a>
+    </div></body></html>""")
+    cfg = {"browser": {"timeout_sekunden": 10}, "produkte": {}}
+    artikel = {"suche": "Sonos Beam Gen 2", "min_preis": 250}
+    try:
+        _, _, gefunden, fehler, _ = worker.auftrag(cfg, "Sonos Beam Gen 2", "geizhals", f"file://{suche}?{{q}}",
+                                                   artikel=artikel)
+    finally:
+        worker._schliessen()
+    assert fehler is None
+    beam = next(a for a in gefunden if a.name == "Sonos Beam (Gen 2) schwarz")
+    assert beam.haendler == "Alternate" and beam.preis == 449.0
+    assert all(a.haendler is None for a in gefunden if a is not beam)  # nur der günstigste passende Treffer

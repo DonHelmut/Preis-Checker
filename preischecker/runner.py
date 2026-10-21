@@ -72,11 +72,14 @@ def fehler_kurz(fehlertext: str) -> str:
 
 
 def sammeln(cfg: dict, auftraege: list[tuple[str, str, str]], fortschritt: Fortschritt,
-            debug: bool = False, status_speichern: bool = True) -> tuple[dict, dict]:
+            debug: bool = False, status_speichern: bool = True,
+            artikel: dict[str, dict] | None = None) -> tuple[dict, dict]:
     """Shops parallel durchsuchen (je paralleler Browser ein Prozess). auftraege = [(suche, shop, url_vorlage)].
 
+    artikel: {suche: artikel} für den Relevanzfilter bei der Händler-Ermittlung in Preisvergleichen.
     Liefert ({suche: [ProduktAngebot]}, {suche: [fehlertext]}).
     """
+    artikel = artikel or {}
     angebote: dict[str, list[ProduktAngebot]] = {}
     fehler: dict[str, list[str]] = {}
     parallel = max(1, min(int(cfg["produkte"].get("parallel", 3)), len(auftraege) or 1))
@@ -93,13 +96,13 @@ def sammeln(cfg: dict, auftraege: list[tuple[str, str, str]], fortschritt: Forts
     if parallel == 1:
         for a in auftraege:
             fortschritt.schritt_start(label(a))
-            verbuchen(*worker.auftrag(cfg, *a, debug))
+            verbuchen(*worker.auftrag(cfg, *a, debug, artikel.get(a[0])))
         worker._schliessen()
         return angebote, fehler
 
     offen = list(auftraege)
     with ProcessPoolExecutor(max_workers=parallel, mp_context=multiprocessing.get_context("spawn")) as pool:
-        futures = {pool.submit(worker.auftrag, cfg, *a, debug): a for a in auftraege}
+        futures = {pool.submit(worker.auftrag, cfg, *a, debug, artikel.get(a[0])): a for a in auftraege}
         for a in offen[:parallel]:
             fortschritt.schritt_start(label(a))
         for fut in as_completed(futures):
@@ -163,7 +166,7 @@ def produkte_pruefen(cfg: dict, debug: bool = False) -> list[dict]:
     liste = cfg["produkte"].get("liste") or []
     auftraege = _ohne_gesperrte(cfg, [(a["suche"], shop, url) for a in liste for shop, url in shops.shops_fuer(cfg, a).items()])
     FORTSCHRITT.beginnen(len(auftraege), "Produktpreise")
-    angebote, fehler = sammeln(cfg, auftraege, FORTSCHRITT, debug)
+    angebote, fehler = sammeln(cfg, auftraege, FORTSCHRITT, debug, artikel={a["suche"]: a for a in liste})
     zeit = datetime.now().isoformat(timespec="seconds")
     ergebnisse = []
     for artikel in liste:
@@ -187,7 +190,8 @@ def schnellsuche(cfg: dict, artikel: dict, fortschritt: Fortschritt | None = Non
     fortschritt = fortschritt or Fortschritt()
     auftraege = _ohne_gesperrte(cfg, [(artikel["suche"], shop, url) for shop, url in shops.shops_fuer(cfg, artikel).items()])
     fortschritt.beginnen(len(auftraege), "Schnellsuche")
-    angebote, fehler = sammeln(cfg, auftraege, fortschritt, status_speichern=False)
+    angebote, fehler = sammeln(cfg, auftraege, fortschritt, status_speichern=False,
+                               artikel={artikel["suche"]: artikel})
     fortschritt.beenden()
     ergebnis = compare.produkt(cfg, artikel, angebote.get(artikel["suche"], []))
     return {**ergebnis, "fehler": "; ".join(fehler.get(artikel["suche"], [])) or None}

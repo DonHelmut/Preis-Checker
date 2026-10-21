@@ -21,8 +21,8 @@
       <p class="ink2" style="margin:6px 0 0">Tipp: Suchbegriff kürzer oder genauer, z. B. Modellnummer. Alle Wörter müssen im Produktnamen vorkommen.</p></div>
   {% else %}
     <div class="kpis" style="margin-top:20px">
-      <div class="card kpi"><div class="label">Günstigster</div><div class="wert" style="color:var(--good-ink)">{{ e.angebote[0].preis|eur }}</div><div class="unter">{{ shop_name(e.angebote[0].shop) }}</div></div>
-      <div class="card kpi"><div class="label">Teuerster</div><div class="wert">{{ e.angebote[-1].preis|eur }}</div><div class="unter">{{ shop_name(e.angebote[-1].shop) }}</div></div>
+      <div class="card kpi"><div class="label">Günstigster</div><div class="wert" style="color:var(--good-ink)">{{ e.angebote[0].preis|eur }}</div><div class="unter">{{ anbieter(e.angebote[0]) }}</div></div>
+      <div class="card kpi"><div class="label">Teuerster</div><div class="wert">{{ e.angebote[-1].preis|eur }}</div><div class="unter">{{ anbieter(e.angebote[-1]) }}</div></div>
       <div class="card kpi"><div class="label">Angebote</div><div class="wert">{{ e.angebote|length }}</div><div class="unter">aus {{ e.angebote|map(attribute="shop")|unique|list|length }} Shops</div></div>
       {% if e.markt_median %}<div class="card kpi"><div class="label">Median andere Shops</div><div class="wert">{{ e.markt_median|eur }}</div><div class="unter">Vergleichswert</div></div>{% endif %}
     </div>
@@ -32,7 +32,7 @@
         <thead><tr><th data-sort class="num">Preis</th><th data-sort>Shop</th><th data-sort>Produkt</th></tr></thead>
         <tbody>{% for a in e.angebote[:60] %}
           <tr class="{{ 'bester' if loop.first }}"><td class="num" data-wert="{{ a.preis }}"><b>{{ a.preis|eur }}</b>{% if a.rabatt_prozent %}<div class="klein" style="color:var(--good-ink)">−{{ "%.0f"|format(a.rabatt_prozent) }} %</div>{% endif %}</td>
-          <td data-wert="{{ shop_name(a.shop) }}">{{ shop_name(a.shop) }}{% if a.aktion %} <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}</td>
+          <td data-wert="{{ anbieter(a) }}">{{ anbieter(a) }}{% if a.aktion %} <span class="chip akzent" style="padding:1px 7px">Aktion</span>{% endif %}</td>
           <td class="name">{% if a.url %}<a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.name }} {{ icon("extern", "s") }}</a>{% else %}{{ a.name }}{% endif %}</td></tr>
         {% endfor %}</tbody>
       </table></div>

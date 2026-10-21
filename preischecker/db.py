@@ -52,6 +52,9 @@ def connect() -> sqlite3.Connection:
     con = sqlite3.connect(DATA_DIR / "preischecker.db")
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
+    spalten = {r["name"] for r in con.execute("PRAGMA table_info(preise)")}
+    if "haendler" not in spalten:  # ab 1.1: tatsächlicher Händler bei Preisvergleichen
+        con.execute("ALTER TABLE preise ADD COLUMN haendler TEXT")
     return con
 
 
@@ -101,18 +104,18 @@ def preise_speichern(suche: str, zeit: str, angebote: list[dict]) -> None:
             je_shop[a["shop"]] = a
     with connect() as con:
         con.executemany(
-            "INSERT INTO preise (zeit, suche, shop, name, preis, url, lieferbar, aktion, alter_preis)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO preise (zeit, suche, shop, name, preis, url, lieferbar, aktion, alter_preis, haendler)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [(zeit, suche, a["shop"], a.get("name"), a["preis"], a.get("url"),
               None if a.get("lieferbar") is None else int(a["lieferbar"]), int(bool(a.get("aktion"))),
-              a.get("alter_preis")) for a in je_shop.values()],
+              a.get("alter_preis"), a.get("haendler")) for a in je_shop.values()],
         )
 
 
 def preisverlauf(suche: str, seit: str | None = None) -> list[dict]:
     with connect() as con:
         rows = con.execute(
-            "SELECT zeit, shop, name, preis, url, aktion FROM preise WHERE suche=? AND zeit>=? ORDER BY zeit",
+            "SELECT zeit, shop, name, preis, url, aktion, haendler FROM preise WHERE suche=? AND zeit>=? ORDER BY zeit",
             (suche, seit or ""),
         ).fetchall()
     return [dict(r) for r in rows]
