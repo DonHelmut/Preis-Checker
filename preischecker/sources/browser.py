@@ -237,11 +237,27 @@ def bestaetigen(page: Page) -> bool:
     return True
 
 
-def submit(page: Page) -> None:
+# Vom eindeutigen zum allgemeinen: „ohne Router · mit Young Tarifen“ ist kein Absenden-Button
+_ABSENDEN = [r"^\W*(jetzt\s+)?(tarife\s+)?(vergleichen|berechnen)\W*$", r"vergleichen|berechnen|suchen|prüfen|weiter",
+             r"vergleich|tarife"]
+
+
+def submit(page: Page) -> Page:
+    """Formular abschicken. Liefert die Seite mit den Ergebnissen (öffnet die Seite einen neuen Tab, diesen)."""
     accept_cookies(page, warten_s=0)  # spät eingeblendete Banner blockieren sonst den Klick
-    btn = _sichtbar(page.get_by_role("button", name=re.compile(r"vergleich|berechnen|suchen|prüfen|weiter|tarife", re.I)))
-    if btn is None or not _klicken(page, btn):
+    vorher = len(page.context.pages)
+    for muster in _ABSENDEN:
+        btn = _sichtbar(page.get_by_role("button", name=re.compile(muster, re.I)))
+        if btn is not None and _klicken(page, btn):
+            break
+    else:
         page.keyboard.press("Enter")
+    page.wait_for_timeout(1500)
+    if len(page.context.pages) > vorher:
+        neu = page.context.pages[-1]
+        neu.wait_for_load_state("domcontentloaded")
+        return neu
+    return page
 
 
 def wait_for_cards(page: Page, keyword: str, timeout_s: int = 60, min_len: int = 60,

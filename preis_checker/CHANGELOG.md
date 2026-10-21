@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.1.7
+- Check24: „Vergleichen“-Button hat Vorrang (vorher wurde z. B. „ohne Router · mit Young Tarifen“ geklickt)
+- Ergebnisse in neuem Tab werden ebenfalls ausgelesen
+
 ## 1.1.6
 - Check24 Strom: Verbrauch mit „Übernehmen“ bestätigen, sonst startete der Vergleich nicht
 - Check24 Internet: neues Formular (Adresse im Dialog hinter „Adresse“-Button)
