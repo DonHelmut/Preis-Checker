@@ -39,7 +39,19 @@ def create_app(config_path=None) -> Flask:
 
     @app.get("/api/status")
     def status():
-        return jsonify({kat: db.letzte(kat) for kat in ("strom", "internet")} | {"laeuft": runner.laeuft()})
+        cfg = load_config(config_path)
+        produkte = {}
+        for artikel in cfg["produkte"].get("liste") or []:
+            e = db.letzte(f"produkt:{artikel['suche']}") or {}
+            best = (e.get("angebote") or [{}])[0]
+            produkte[artikel["suche"]] = {
+                "bester_preis": e.get("bester_preis"), "shop": best.get("shop"), "name": best.get("name"),
+                "url": best.get("url"), "zielpreis": artikel.get("zielpreis"),
+                "ziel_erreicht": e.get("ziel_erreicht", False), "zeit": e.get("zeit"), "fehler": e.get("fehler"),
+                "top": [{k: a.get(k) for k in ("preis", "shop", "name", "url")} for a in (e.get("angebote") or [])[:5]],
+            }
+        return jsonify({kat: db.letzte(kat) for kat in ("strom", "internet")}
+                       | {"produkte": produkte, "laeuft": runner.laeuft()})
 
     return app
 

@@ -69,9 +69,35 @@ Parser-Anpassungen in `preischecker/sources/parsing.py`, Formular/Navigation in 
 
 ## Home Assistant
 
-`webhook_url: http://<ha>:8123/api/webhook/preischecker` setzen. Payload:
-`{"text", "kategorie", "ersparnis_jahr", "bestes_angebot": {"anbieter", "tarif", "kosten_jahr"}}`.
-Alternativ `GET /api/status` per REST-Sensor abfragen.
+**Push** (`webhook_url: http://<ha>:8123/api/webhook/preischecker`), Payload enthält `text` + Details. Automation:
+```yaml
+triggers:
+  - trigger: webhook
+    webhook_id: preischecker
+    allowed_methods: [POST]
+    local_only: true
+actions:
+  - action: notify.notify
+    data: {title: Preis-Checker, message: "{{ trigger.json.text }}"}
+```
+
+**Sensoren** über `GET /api/status` (`configuration.yaml`):
+```yaml
+rest:
+  - resource: http://<vm-ip>:8080/api/status
+    scan_interval: 1800
+    sensor:
+      - name: RX 9070 XT bester Preis
+        unique_id: preischecker_rx9070xt
+        value_template: "{{ value_json.produkte['RX 9070 XT'].bester_preis }}"
+        unit_of_measurement: "€"
+        json_attributes_path: "$.produkte['RX 9070 XT']"
+        json_attributes: [shop, name, url, zielpreis, ziel_erreicht, zeit, top]
+      - name: Strom Ersparnis
+        value_template: "{{ value_json.strom.beste_ersparnis_jahr | default(0) }}"
+        unit_of_measurement: "€"
+```
+Pro Suche einen Sensor; Schlüssel = `suche` aus der Config.
 
 ## Tests
 

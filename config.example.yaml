@@ -51,7 +51,7 @@ produkte:
       # muss_enthalten: ["9070", "xt"]   # Standard: alle Wörter aus "suche"
 
 pruefung:
-  intervall_stunden: 24
+  intervall_stunden: 6          # 4× täglich
   benachrichtigen_ab_euro_jahr: 50   # Meldung, wenn Ersparnis >= diesem Betrag
 
 benachrichtigung:

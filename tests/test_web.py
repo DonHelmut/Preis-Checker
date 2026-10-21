@@ -30,3 +30,19 @@ def test_dashboard_produkte(tmp_path, monkeypatch):
     from preischecker.web import create_app
     html = create_app(cfg_path).test_client().get("/").get_data(as_text=True)
     assert "629.00 €" in html and "https://x/1" in html and "alternate" in html
+
+
+def test_api_status_produkte(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    cfg_path = tmp_path / "config.yaml"
+    artikel = {"suche": "RX 9070 XT", "zielpreis": 640}
+    cfg_path.write_text(yaml.safe_dump({"produkte": {"aktiv": True, "liste": [artikel, {"suche": "Switch 2"}]}}))
+    from preischecker.config import load_config
+    from preischecker.models import ProduktAngebot
+    db.speichern(compare.produkt(load_config(cfg_path), artikel,
+                                 [ProduktAngebot("Pulse RX 9070 XT", 629, "alternate", "https://x/1")]))
+    from preischecker.web import create_app
+    p = create_app(cfg_path).test_client().get("/api/status").get_json()["produkte"]
+    assert p["RX 9070 XT"]["bester_preis"] == 629 and p["RX 9070 XT"]["ziel_erreicht"]
+    assert p["RX 9070 XT"]["url"] == "https://x/1"
+    assert p["Switch 2"]["bester_preis"] is None
