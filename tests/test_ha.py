@@ -54,7 +54,8 @@ def test_checkboxen_handys(tmp_path, monkeypatch):
                                      "ha_dienste": ["notify.mobile_app_kalle_handy", "notify.mobile_app_franzi_handy"]})
     from preischecker.config import load_raw
     n = load_raw(path)["benachrichtigung"]
-    assert n == {"ha_dienste": ["notify.mobile_app_kalle_handy", "notify.mobile_app_franzi_handy"]}
+    assert n["ha_dienste"] == ["notify.mobile_app_kalle_handy", "notify.mobile_app_franzi_handy"]
+    assert "ha_dienst" not in n
 
     aufrufe = []
     monkeypatch.setattr(ha, "_post", lambda pfad, daten: aufrufe.append(pfad))

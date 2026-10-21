@@ -35,7 +35,9 @@ def load_config(path: Path | str | None = None) -> dict:
     cfg = load_raw(path)
     cfg.setdefault("standort", {})
     cfg.setdefault("pruefung", {})
-    cfg.setdefault("benachrichtigung", {})
+    n = cfg.setdefault("benachrichtigung", {})
+    for k, v in (("ruhezeit", True), ("ruhe_von", "22:00"), ("ruhe_bis", "07:00"), ("ruhe_nachholen", True)):
+        n.setdefault(k, v)
     cfg.setdefault("browser", {})
     for key in ("strom", "internet"):
         cfg.setdefault(key, {"aktiv": False})

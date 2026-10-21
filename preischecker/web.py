@@ -147,7 +147,8 @@ def create_app(config_path=None) -> Flask:
 
     @app.get("/einstellungen")
     def einstellungen():
-        return einstellungen_seite(load_raw(config_path), gespeichert=request.args.get("ok") == "1")
+        # mit Standardwerten anzeigen (z. B. Ruhezeit 22–7 Uhr), gespeichert wird trotzdem nur das Formular
+        return einstellungen_seite(load_config(config_path), gespeichert=request.args.get("ok") == "1")
 
     @app.post("/einstellungen")
     def einstellungen_speichern():
@@ -451,9 +452,22 @@ def scheduler(config_path=None) -> None:
         time.sleep(intervall)
 
 
+def nachrichten_schleife(config_path=None) -> None:
+    """Jede Minute: nach Ende der Ruhezeit gemerkte Meldungen verschicken."""
+    while True:
+        try:
+            anzahl = notify.nachholen(load_config(config_path))
+            if anzahl:
+                log.info("%d Meldung(en) aus der Ruhezeit verschickt", anzahl)
+        except Exception:
+            log.exception("Nachholen der Meldungen fehlgeschlagen")
+        time.sleep(60)
+
+
 def serve(config_path=None, host="0.0.0.0", port=8080, mit_scheduler=True) -> None:
     if mit_scheduler:
         threading.Thread(target=scheduler, args=(config_path,), daemon=True).start()
+    threading.Thread(target=nachrichten_schleife, args=(config_path,), daemon=True).start()
     if ha.aktiv():
         threading.Thread(target=ha.sync_schleife, args=(config_path,), daemon=True).start()
     create_app(config_path).run(host=host, port=port, threaded=True)

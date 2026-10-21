@@ -34,6 +34,14 @@ CREATE TABLE IF NOT EXISTS preise (
 );
 CREATE INDEX IF NOT EXISTS preise_suche_zeit ON preise (suche, zeit);
 
+-- In der Ruhezeit zurückgehaltene Handy-Meldungen
+CREATE TABLE IF NOT EXISTS nachrichten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    zeit TEXT NOT NULL,
+    text TEXT NOT NULL,
+    payload TEXT
+);
+
 CREATE TABLE IF NOT EXISTS shop_status (
     shop TEXT PRIMARY KEY,
     zeit TEXT,
@@ -84,6 +92,21 @@ def letzte(kategorie: str) -> dict | None:
     if not row:
         return None
     return {**json.loads(row["daten"]), "zeit": row["zeit"], "fehler": row["fehler"]}
+
+
+def nachricht_merken(text: str, payload: dict) -> None:
+    with connect() as con:
+        con.execute("INSERT INTO nachrichten (zeit, text, payload) VALUES (?, ?, ?)",
+                    (datetime.now().isoformat(timespec="seconds"), text, json.dumps(payload, ensure_ascii=False)))
+
+
+def nachrichten_abholen() -> list[dict]:
+    """Gemerkte Meldungen holen und entfernen (älteste zuerst)."""
+    with connect() as con:
+        rows = [dict(r) for r in con.execute("SELECT * FROM nachrichten ORDER BY id").fetchall()]
+        if rows:
+            con.execute("DELETE FROM nachrichten WHERE id<=?", (rows[-1]["id"],))
+    return rows
 
 
 def shop_daten_entfernen(shop: str) -> dict:
