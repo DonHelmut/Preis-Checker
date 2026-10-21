@@ -45,9 +45,25 @@ def anbieter_und_tarif(text: str) -> tuple[str, str]:
     return anbieter, tarif
 
 
+# Check24 (2026): Tarifname, darunter die Note („7,9“), Kosten als „37,56 Ct./kWh · 18,17 €/Monat“
+_NOTE = re.compile(r"^\d{1,2},\d$")
+_FLEX = re.compile(r"flextarif|variabler preis|dynamisch", re.I)
+
+
+def _name_vor_note(text: str) -> str | None:
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    for name, folgt in zip(lines, lines[1:]):
+        if _NOTE.match(folgt) and len(name) <= 60:
+            return name
+    return None
+
+
 def parse_strom(text: str, quelle: str = "") -> StromAngebot | None:
-    ap = _find(rf"Arbeitspreis\D{{0,40}}?{ZAHL}\s*ct", text)
-    gp = _find(rf"Grundpreis\D{{0,40}}?{ZAHL}\s*€\s*(?:/|pro|im)?\s*Monat", text)
+    if _FLEX.search(text):  # Preis nur für den ersten Monat bekannt → nicht vergleichbar
+        return None
+    ap = _find(rf"Arbeitspreis\D{{0,40}}?{ZAHL}\s*ct", text) or _find(rf"{ZAHL}\s*ct\.?\s*/\s*kWh", text)
+    gp = (_find(rf"Grundpreis\D{{0,40}}?{ZAHL}\s*€\s*(?:/|pro|im)?\s*Monat", text)
+          or _find(rf"ct\.?\s*/\s*kWh\W{{0,6}}{ZAHL}\s*€\s*/\s*Monat", text))
     gp_jahr = None
     if gp is None:
         gp_jahr = _find(rf"Grundpreis\D{{0,40}}?{ZAHL}\s*€\s*(?:/|pro|im)?\s*Jahr", text)
@@ -59,7 +75,8 @@ def parse_strom(text: str, quelle: str = "") -> StromAngebot | None:
     bonus = _find(rf"(?:Neukunden|Sofort|Treue)?bonus\D{{0,40}}?{ZAHL}\s*€", text) or 0.0
     if ap is None and jahr is None:
         return None
-    anbieter, tarif = anbieter_und_tarif(text)
+    name = _name_vor_note(text)
+    anbieter, tarif = (name, "") if name else anbieter_und_tarif(text)
     return StromAngebot(
         anbieter=anbieter,
         tarif=tarif,

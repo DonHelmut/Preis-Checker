@@ -49,3 +49,38 @@ def test_internet():
 def test_kein_angebot():
     assert parse_strom("Impressum Kontakt") is None
     assert parse_internet("nur Text 12,99 €") is None
+
+
+CHECK24_STROM_2026 = """Beliebtester Tarif
+E.ON ÖkoStrom Extra 12
+7,9
+Gut
+Mindestvertragslaufzeit: 12 Monate
+Preisgarantie Plus: 15 Monate
+Kosten:
+37,56 Ct./kWh · 18,17 €/Monat
+Bonus:
+309 € einmalig
+Abschlag:
+103 €/Monat geschätzt
+Tarif- und Preisdetails
+★
+3,9 (20.994)
+76,91 €
+Ø pro Monat
+Ersparnis im 1. Jahr: 216,48 €
+Weiter"""
+
+
+def test_strom_check24_2026():
+    a = parse_strom(CHECK24_STROM_2026)
+    assert a.anbieter == "E.ON ÖkoStrom Extra 12"
+    assert a.arbeitspreis_ct == 37.56 and a.grundpreis_monat == 18.17 and a.bonus == 309
+    assert a.laufzeit_monate == 12 and a.preisgarantie_monate == 15
+    assert a.jahreskosten(2700) == round(2700 * 0.3756 + 12 * 18.17, 2)
+
+
+def test_strom_flextarif_wird_ignoriert():
+    flex = ("Günstigster Tarif\nrabot.home flex\n8,3\nSehr gut\nAb dem 2. Monat variabler Preis\n"
+            "Kosten:\n22,09 Ct./kWh · 17,49 €/Monat\nFlextarif\n64,21 €\nim 1. Monat")
+    assert parse_strom(flex) is None

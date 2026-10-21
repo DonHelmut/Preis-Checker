@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.1.8
+- Check24 Strom: neues Kachel-Format („37,56 Ct./kWh · 18,17 €/Monat“) wird erkannt; Flextarife ignoriert
+- Check24: nach dem Absenden bis zu 12 s auf Seitenwechsel/neuen Tab warten, sonst Klick wiederholen
+
 ## 1.1.7
 - Check24: „Vergleichen“-Button hat Vorrang (vorher wurde z. B. „ohne Router · mit Young Tarifen“ geklickt)
 - Ergebnisse in neuem Tab werden ebenfalls ausgelesen
