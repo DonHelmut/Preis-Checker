@@ -136,19 +136,27 @@ def enthaelt_suche(name_: str, woerter: list[str]) -> bool:
     return all(_token_passt(w, name_klein, name_norm) for w in woerter)
 
 
-def passt(angebot: ProduktAngebot, artikel: dict) -> bool:
-    """Relevanzfilter gegen Zubehör & Fehltreffer."""
+def ablehnungsgrund(angebot: ProduktAngebot, artikel: dict) -> str | None:
+    """None = Treffer, sonst warum aussortiert (für Filter und Diagnose)."""
     woerter = artikel.get("muss_enthalten") or artikel["suche"].split()
     if not enthaelt_suche(angebot.name, woerter):
-        return False
+        return "Suchwörter fehlen"
     n = norm(angebot.name)
-    if any(norm(w) and norm(w) in n for w in artikel.get("darf_nicht_enthalten", [])):
-        return False
+    for w in artikel.get("darf_nicht_enthalten", []):
+        if norm(w) and norm(w) in n:
+            return f"enthält „{w}“"
+    if not artikel.get("bundles") and "+" not in artikel["suche"] and re.search(r"\s\+\s|\bset\b|\bbundle\b", angebot.name, re.I):
+        return "Set/Bundle"
     if artikel.get("min_preis") and angebot.preis < artikel["min_preis"]:
-        return False
+        return "unter Mindestpreis"
     if artikel.get("max_preis") and angebot.preis > artikel["max_preis"]:
-        return False
-    return True
+        return "über Höchstpreis"
+    return None
+
+
+def passt(angebot: ProduktAngebot, artikel: dict) -> bool:
+    """Relevanzfilter gegen Zubehör & Fehltreffer."""
+    return ablehnungsgrund(angebot, artikel) is None
 
 
 def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool = False) -> list[ProduktAngebot]:

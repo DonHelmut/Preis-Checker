@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3
+- Sets/Bundles („… + Era 100“, „Set“, „Bundle“) werden standardmäßig aussortiert (pro Artikel `bundles: true` erlaubt sie)
+- Diagnose-Schnittstelle `/api/diagnose?shop=…&q=…`: zeigt jedes erkannte Angebot mit Grund fürs Aussortieren
+
 ## 1.0.2
 - Volles Chromium im neuen Headless-Modus (Playwright 1.56), passender User-Agent ohne „HeadlessChrome“ → weniger Bot-Sperren
 - Wartet auf Cloudflare-Zwischenseiten, gesperrte Shops heißen jetzt „Blockiert (Bot-Schutz)“

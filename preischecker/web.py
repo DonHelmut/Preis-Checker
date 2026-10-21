@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import logging
+import multiprocessing
 import threading
 import time
 import uuid
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, url_for
 
-from . import ansicht, ha, notify, runner, settings
+from . import ansicht, ha, notify, runner, settings, worker
+from .sources import shops as shops_modul
 from .config import DATA_DIR, load_config, load_raw, save_raw
-from .sources.shops import GRUPPEN_NAMEN, KATEGORIEN, SHOP_LISTE, shop_name
+from .sources.shops import GRUPPEN_NAMEN, KATEGORIEN, SHOP_LISTE, SHOPS, shop_name
 from .status import status_daten
 
 log = logging.getLogger(__name__)
@@ -306,6 +309,21 @@ def create_app(config_path=None) -> Flask:
             return jsonify({"gestartet": False, "grund": "läuft bereits"})
         threading.Thread(target=runner.pruefen, args=(load_config(config_path),), daemon=True).start()
         return jsonify({"gestartet": True})
+
+    @app.get("/api/diagnose")
+    def api_diagnose():
+        """Einen Shop live durchsuchen und jedes erkannte Angebot mit Filter-Ergebnis zeigen."""
+        cfg = load_config(config_path)
+        shop, q = request.args.get("shop", ""), request.args.get("q", "").strip()
+        urls = ansicht.aktive_shops(cfg) | {k: v.url for k, v in SHOPS.items()}
+        if shop not in urls or not q:
+            return jsonify({"fehler": "shop und q angeben", "shops": sorted(urls)}), 400
+        artikel = next((a for a in cfg["produkte"].get("liste") or [] if a["suche"].lower() == q.lower()), {"suche": q})
+        with ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn")) as pool:
+            _, _, gefunden, fehler, dauer = pool.submit(worker.auftrag, cfg, q, shop, urls[shop], True).result(timeout=150)
+        return jsonify({"shop": shop, "suche": q, "artikel": artikel, "fehler": fehler, "dauer": round(dauer, 1),
+                        "angebote": [{"name": a.name, "preis": a.preis, "lieferbar": a.lieferbar, "url": a.url,
+                                      "grund": shops_modul.ablehnungsgrund(a, artikel)} for a in gefunden]})
 
     @app.get("/api/debug")
     def api_debug():

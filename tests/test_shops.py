@@ -105,3 +105,16 @@ def test_shops_nach_kategorie():
     cfg = {"produkte": {"quellen": ["geizhals"], "eigene_shops": {"meinshop": "https://m/{q}"}}}
     assert shops_fuer(cfg, {"suche": "x", "kategorie": "hardware"}) == {
         "geizhals": "https://geizhals.de/?fs={q}&hloc=de", "meinshop": "https://m/{q}"}
+
+
+def test_ablehnungsgruende_und_bundles():
+    from preischecker.sources.shops import ablehnungsgrund
+    art = {"suche": "Sonos Beam Gen 2", "min_preis": 250, "darf_nicht_enthalten": ["halterung"]}
+    def g(name, preis=449):
+        return ablehnungsgrund(ProduktAngebot(name, preis, "x"), art)
+    assert g("Sonos Beam (Gen 2) Soundbar schwarz") is None
+    assert g("Sonos Beam (Gen 2) + Era 100 SL Soundbar-System") == "Set/Bundle"
+    assert g("Sonos Beam Gen 2 Wandhalterung") == "enthält „halterung“"
+    assert g("Sonos Beam Gen 2", 99) == "unter Mindestpreis"
+    assert g("Sonos Arc Ultra") == "Suchwörter fehlen"
+    assert ablehnungsgrund(ProduktAngebot("Sonos Beam Gen 2 + Sub Mini Set", 900, "x"), art | {"bundles": True}) is None
