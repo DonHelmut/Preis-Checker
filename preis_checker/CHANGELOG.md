@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.4
+- Check24 Internet: „neuer Vertrag“ statt „Vertrag wechseln“ (das verlangt zusätzlich den bisherigen Anbieter)
+
 ## 1.2.3
 - Check24 Internet: Pflichtauswahl „Vertrag wechseln“ wird gesetzt (sonst reagierte „vergleichen“ nicht)
 

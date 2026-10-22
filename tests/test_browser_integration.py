@@ -169,8 +169,8 @@ def test_check24_dsl_adressdialog(tmp_path, monkeypatch):
           <li onclick="r2.value='9!'; this.parentNode.style.display='none'">9</li></ul>
         <button type="submit">fertig</button></form></dialog>
       <button type="button" onclick="document.title = 'falscher Button'"><p>ohne Router · mit Young Tarifen</p></button>
-      <fieldset><label><input type="radio" name="art" value="new"> neuer Vertrag</label>
-        <label><input type="radio" name="art" value="change" id="wechsel"> Vertrag wechseln</label></fieldset>
+      <fieldset><label><input type="radio" name="art" value="new" id="wechsel"> neuer Vertrag</label>
+        <label><input type="radio" name="art" value="change"> Vertrag wechseln</label></fieldset>
       <button type="button" onclick="if (wechsel.checked) document.title = [r0.value, r1.value, r2.value].join('|')">vergleichen</button>
     </body></html>""")
     monkeypatch.setattr(check24, "DSL_START", f"file://{tmp_path}/dsl.html")

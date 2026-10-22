@@ -47,8 +47,12 @@ def _strom_cards(page, cfg: dict):
 
 
 def _vertragsart(page) -> None:
-    """Pflichtauswahl „neuer Vertrag / Vertrag wechseln / Umzug“ – ohne sie reagiert „vergleichen“ nicht."""
-    radio = page.get_by_label(re.compile(r"vertrag wechseln|anbieterwechsel", re.I))
+    """Pflichtauswahl „neuer Vertrag / Vertrag wechseln / Umzug“ – ohne sie reagiert „vergleichen“ nicht.
+
+    „neuer Vertrag“, weil „Vertrag wechseln“ zusätzlich den bisherigen Anbieter aus einer Liste verlangt;
+    die angebotenen Tarife sind dieselben.
+    """
+    radio = page.get_by_label(re.compile(r"^\s*neuer vertrag", re.I))
     try:
         if radio.count() and not radio.first.is_checked():
             radio.first.check(timeout=4000, force=True)
