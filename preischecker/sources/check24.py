@@ -41,8 +41,19 @@ def _strom_cards(page, cfg: dict):
         b.pick_autocomplete(page, str(ort["plz"]))
     if b.fill_first(page, ["verbrauch", "kwh", "consumption"], kwh):
         b.bestaetigen(page)
+    _vertragsart(page)
     page = b.submit(page)
     return page, b.wait_for_cards(page, r"kWh|Arbeitspreis", timeout_s=timeout)
+
+
+def _vertragsart(page) -> None:
+    """Pflichtauswahl „neuer Vertrag / Vertrag wechseln / Umzug“ – ohne sie reagiert „vergleichen“ nicht."""
+    radio = page.get_by_label(re.compile(r"vertrag wechseln|anbieterwechsel", re.I))
+    try:
+        if radio.count() and not radio.first.is_checked():
+            radio.first.check(timeout=4000, force=True)
+    except Exception:
+        log.warning("Check24: Vertragsart nicht auswählbar")
 
 
 def _dsl_cards(page, cfg: dict):
@@ -60,6 +71,7 @@ def _dsl_cards(page, cfg: dict):
         if b.fill_first(page, ["hausnummer", "hausnr", "nr", "streetnumber", "housenumber"], nr):
             b.pick_autocomplete(page, re.compile(rf"^\s*{re.escape(nr)}\s*$"))  # Check24 will die Nummer aus der Liste
     b.bestaetigen(page)
+    _vertragsart(page)
     page = b.submit(page)
     return page, b.wait_for_cards(page, r"Mbit", timeout_s=timeout)
 

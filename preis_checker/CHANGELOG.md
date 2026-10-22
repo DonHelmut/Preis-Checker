@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.3
+- Check24 Internet: Pflichtauswahl „Vertrag wechseln“ wird gesetzt (sonst reagierte „vergleichen“ nicht)
+
 ## 1.2.2
 - Diagnose: Zustand der Seite (Buttons, Dialoge, Meldungen), Konsolenfehler und kleines Bildschirmfoto als Text
 
