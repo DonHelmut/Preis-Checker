@@ -63,6 +63,9 @@ def connect() -> sqlite3.Connection:
     spalten = {r["name"] for r in con.execute("PRAGMA table_info(preise)")}
     if "haendler" not in spalten:  # ab 1.1: tatsächlicher Händler bei Preisvergleichen
         con.execute("ALTER TABLE preise ADD COLUMN haendler TEXT")
+    spalten = {r["name"] for r in con.execute("PRAGMA table_info(shop_status)")}
+    if "letzte_sperre" not in spalten:  # ab 1.2.6: Shops nach einer Sperre schonender abfragen
+        con.execute("ALTER TABLE shop_status ADD COLUMN letzte_sperre TEXT")
     return con
 
 
@@ -182,6 +185,8 @@ def shop_status_setzen(shop: str, ok: bool, treffer: int, dauer: float, fehler: 
             (shop, datetime.now().isoformat(timespec="seconds"), int(ok), treffer, round(dauer, 1), fehler,
              int(ok), int(not ok)),
         )
+        if fehler and fehler.startswith("BlockiertError"):
+            con.execute("UPDATE shop_status SET letzte_sperre=zeit WHERE shop=?", (shop,))
 
 
 def gesperrte_shops(stunden: float) -> dict[str, str]:
@@ -192,6 +197,22 @@ def gesperrte_shops(stunden: float) -> dict[str, str]:
     with connect() as con:
         rows = con.execute("SELECT shop, zeit FROM shop_status WHERE ok=0 AND fehler LIKE 'BlockiertError%' AND zeit>=?",
                            (grenze,)).fetchall()
+    return {r["shop"]: r["zeit"] for r in rows}
+
+
+def schonend_zurueckhalten(abstand_stunden: float, tage: int = 7) -> dict[str, str]:
+    """Shops mit Sperre in den letzten `tage` Tagen, die zuletzt vor weniger als `abstand_stunden` abgefragt wurden.
+
+    Liefert shop -> Zeitpunkt der letzten Abfrage. So wird ein empfindlicher Shop höchstens z. B. 1× täglich angefragt.
+    """
+    if abstand_stunden <= 0:
+        return {}
+    jetzt = datetime.now()
+    sperre = (jetzt - timedelta(days=tage)).isoformat(timespec="seconds")
+    abfrage = (jetzt - timedelta(hours=abstand_stunden)).isoformat(timespec="seconds")
+    with connect() as con:
+        rows = con.execute("SELECT shop, zeit FROM shop_status WHERE letzte_sperre>=? AND zeit>=?",
+                           (sperre, abfrage)).fetchall()
     return {r["shop"]: r["zeit"] for r in rows}
 
 

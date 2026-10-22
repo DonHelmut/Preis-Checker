@@ -91,3 +91,29 @@ def test_shop_daten_entfernen(tmp_path, monkeypatch):
     assert not letzte["ziel_erreicht"] and not letzte["schnaeppchen"]
     assert [x["shop"] for x in db.preisverlauf("Switch 2")] == ["kaufland"]
     assert db.verlauf("produkt:Switch 2")[-1]["bestes_jahr"] == 478.99
+
+
+def test_nach_sperre_nur_noch_selten(tmp_path, monkeypatch):
+    from datetime import datetime, timedelta
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    cfg = {"produkte": {}}
+    auftraege = [("x", "geizhals", "u"), ("x", "idealo", "u")]
+    db.shop_status_setzen("geizhals", False, 0, 1, "BlockiertError: Bot-Schutz")
+    db.shop_status_setzen("idealo", True, 5, 1, None)
+    # frisch gesperrt → Pause
+    assert runner._ohne_gesperrte(cfg, auftraege) == [("x", "idealo", "u")]
+    # Sperre vor 2 Tagen, danach wieder erfolgreich: Shop gilt als empfindlich
+    vor = (datetime.now() - timedelta(days=2)).isoformat(timespec="seconds")
+    with db.connect() as con:
+        con.execute("UPDATE shop_status SET zeit=?, letzte_sperre=? WHERE shop='geizhals'", (vor, vor))
+    db.shop_status_setzen("geizhals", True, 3, 1, None)
+    assert runner._ohne_gesperrte(cfg, auftraege) == [("x", "idealo", "u")]  # gerade erst abgefragt
+    gestern = (datetime.now() - timedelta(hours=21)).isoformat(timespec="seconds")
+    with db.connect() as con:
+        con.execute("UPDATE shop_status SET zeit=? WHERE shop='geizhals'", (gestern,))
+    assert runner._ohne_gesperrte(cfg, auftraege) == auftraege  # > 20 h her → wieder dran
+    # Übersicht erklärt den Zustand
+    from preischecker import ansicht
+    db.shop_status_setzen("geizhals", True, 3, 1, None)
+    g = next(s for s in ansicht.shop_uebersicht({"produkte": {"quellen": ["geizhals"]}}) if s["key"] == "geizhals")
+    assert "schonend 1×/Tag" in g["text"] and g["zustand"] == "ok"
