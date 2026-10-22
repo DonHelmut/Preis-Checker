@@ -37,6 +37,8 @@ ABSCHNITTE = [
         ("internet.filter.min_download_mbit", "Mindestens", "int", "Mbit/s"),
         ("internet.filter.max_laufzeit_monate", "Max. Laufzeit", "int", "Monate"),
         ("internet.filter.bonus_einrechnen", "Bonus einrechnen", "bool", "auf Laufzeit umgelegt"),
+        ("internet.filter.mobilfunk", "Mobilfunk-Router zeigen", "bool", "GigaCube, Speedbox – meist mit Datenlimit"),
+        ("internet.filter.young", "Young-Tarife zeigen", "bool", "nur unter 28 Jahren"),
     ]),
     ("Produkt-Suche: Optionen", "", [
         ("produkte.aktiv", "Produkte beobachten", "bool", ""),

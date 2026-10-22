@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.2.5
+- Internet: Mobilfunk-Router (GigaCube, Speedbox), Young-Tarife (unter 28) und nicht abschließbare Tarife ausgeblendet (in den Einstellungen zuschaltbar)
+- Internet: Tarifname korrekt erkannt (vorher stand z. B. „Befriedigend“ als Tarif)
+
 ## 1.2.4
 - Check24 Internet: „neuer Vertrag“ statt „Vertrag wechseln“ (das verlangt zusätzlich den bisherigen Anbieter)
 
