@@ -28,3 +28,15 @@ def test_internet_min_download():
     e = compare.internet(CFG, angebote)
     assert [a["anbieter"] for a in e["angebote"]] == ["Schnell"]
     assert e["beste_ersparnis_jahr"] == 60.0
+
+
+def test_strom_bonus_zaehlt_nicht_dauerhaft():
+    # Wie E.ON real: Bonustarif ist ohne Bonus teurer → keine Ersparnis, nur Hinweis fürs 1. Jahr
+    cfg = {"strom": {"verbrauch_kwh": 2700, "arbeitspreis_ct": 33.52, "grundpreis_monat": 18.34, "anbieter": "E.ON",
+                     "filter": {}}}
+    bonus = StromAngebot("E.ON ÖkoStrom Extra 12", arbeitspreis_ct=37.56, grundpreis_monat=18.17, bonus=309)
+    e = compare.strom(cfg, [bonus])
+    assert e["aktuell"]["kosten_jahr"] == 1125.12
+    assert e["angebote"][0]["kosten_jahr"] == 1232.16 and e["beste_ersparnis_jahr"] == -107.04
+    assert e["angebote"][0]["ersparnis_1_jahr"] == 201.96
+    assert e["bonus_tipp"]["ersparnis_1_jahr"] == 201.96

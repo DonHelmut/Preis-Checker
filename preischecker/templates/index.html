@@ -76,7 +76,8 @@
         <div><div class="muted klein">Aktuell / Jahr</div><div style="font-size:20px;font-weight:700">{{ e.aktuell.kosten_jahr|eur }}</div><div class="klein ink2">{{ e.aktuell.anbieter }}</div></div>
         {% if e.angebote %}<div><div class="muted klein">Günstigster / Jahr</div><div style="font-size:20px;font-weight:700">{{ e.angebote[0].kosten_jahr|eur }}</div><div class="klein ink2">{{ e.angebote[0].anbieter }}</div></div>{% endif %}
       </div>
-      {% if e.beste_ersparnis_jahr is not none %}<p class="klein" style="margin:12px 0 0">Ersparnis: <b style="color:var({{ '--good-ink' if e.beste_ersparnis_jahr > 0 else '--critical-ink' }})">{{ e.beste_ersparnis_jahr|eur }} / Jahr</b>{% if e.aktuell.kuendigen_bis %} · kündigen bis {{ e.aktuell.kuendigen_bis|datum }}{% endif %}</p>{% endif %}
+      {% if e.beste_ersparnis_jahr is not none %}<p class="klein" style="margin:12px 0 0">{{ "Ersparnis" if e.beste_ersparnis_jahr > 0 else "Mehrkosten" }}{% if e.kategorie == "strom" %} (dauerhaft){% endif %}: <b style="color:var({{ '--good-ink' if e.beste_ersparnis_jahr > 0 else '--critical-ink' }})">{{ e.beste_ersparnis_jahr|abs|eur }} / Jahr</b>{% if e.aktuell.kuendigen_bis %} · kündigen bis {{ e.aktuell.kuendigen_bis|datum }}{% endif %}</p>{% endif %}
+      {% if e.bonus_tipp %}<p class="klein muted" style="margin:6px 0 0">Nur 1. Jahr: {{ e.bonus_tipp.anbieter }} spart mit {{ e.bonus_tipp.bonus|eur }} Bonus {{ e.bonus_tipp.ersparnis_1_jahr|eur }} – danach teurer, lohnt nur bei jährlichem Wechsel.</p>{% endif %}
       {% if e.fehler %}<p class="klein" style="color:var(--critical-ink);margin:8px 0 0">{{ e.fehler }}</p>{% endif %}
     {% endif %}
   </div>

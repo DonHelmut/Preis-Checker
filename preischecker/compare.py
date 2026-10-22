@@ -25,17 +25,24 @@ def strom(cfg: dict, angebote: list[StromAngebot]) -> dict:
             continue
         if f.get("nur_oekostrom") and not a.oekostrom:
             continue
-        kosten = a.jahreskosten(kwh, f.get("bonus_einrechnen", False))
+        # Bewertet wird dauerhaft, also ohne Neukundenbonus – der gilt nur im 1. Jahr
+        kosten = a.jahreskosten(kwh)
         if kosten is None:
             continue
-        rows.append({**a.to_dict(), "kosten_jahr": kosten, "ersparnis_jahr": round(aktuell - kosten, 2)})
+        erstes = a.jahreskosten(kwh, bonus_einrechnen=True)
+        rows.append({**a.to_dict(), "kosten_jahr": kosten, "ersparnis_jahr": round(aktuell - kosten, 2),
+                     "kosten_1_jahr": erstes, "ersparnis_1_jahr": round(aktuell - erstes, 2)})
     rows.sort(key=lambda r: r["kosten_jahr"])
+    bonus = max(rows, key=lambda r: r["ersparnis_1_jahr"], default=None)
     return {
         "kategorie": "strom",
         "aktuell": {**{k: v.get(k) for k in ("anbieter", "tarif", "arbeitspreis_ct", "grundpreis_monat", "verbrauch_kwh")},
                     "kosten_jahr": aktuell, "kuendigen_bis": kuendigen_bis(v)},
         "angebote": rows,
         "beste_ersparnis_jahr": rows[0]["ersparnis_jahr"] if rows else None,
+        # Nur zur Info: lohnt sich nur bei jährlichem Wechsel
+        "bonus_tipp": ({k: bonus[k] for k in ("anbieter", "tarif", "bonus", "ersparnis_1_jahr")}
+                       if bonus and bonus["bonus"] and bonus["ersparnis_1_jahr"] > max(rows[0]["ersparnis_jahr"], 0) else None),
     }
 
 
