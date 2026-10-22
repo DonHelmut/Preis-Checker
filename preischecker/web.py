@@ -378,7 +378,7 @@ def create_app(config_path=None) -> Flask:
 
     @app.get("/api/debug/<name>/<datei>")
     def api_debug_datei(name, datei):
-        if datei not in ("seite.png", "seite.html", "kacheln.txt", "url.txt", "netz.txt", "json.json") or "/" in name or ".." in name:
+        if datei not in ("seite.png", "seite.html", "kacheln.txt", "url.txt", "netz.txt", "json.json", "bild.txt", "zustand.txt") or "/" in name or ".." in name:
             abort(404)
         pfad = DATA_DIR / "debug" / name / datei
         if not pfad.exists():
