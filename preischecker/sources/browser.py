@@ -1,6 +1,7 @@
 """Playwright-Hilfen: Browser starten, Cookie-Banner wegklicken, Ergebnisliste finden."""
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -94,6 +95,10 @@ def browser_page(cfg: dict):
                     pass
 
         page.on("response", on_response)
+        page.on("console", lambda m: m.type in ("error", "warning") and len(page._anfragen) < 400  # type: ignore[attr-defined]
+                and page._anfragen.append(f"{datetime.now():%H:%M:%S} console.{m.type}: {m.text[:300]}"))  # type: ignore[attr-defined]
+        page.on("pageerror", lambda e: page._anfragen.append(f"{datetime.now():%H:%M:%S} pageerror: {str(e)[:300]}"))  # type: ignore[attr-defined]
+        ctx.on("page", lambda p: page._anfragen.append(f"{datetime.now():%H:%M:%S} neuer Tab: {p.url}"))  # type: ignore[attr-defined]
         try:
             yield page
         finally:
@@ -296,6 +301,25 @@ def wait_for_cards(page: Page, keyword: str, timeout_s: int = 60, min_len: int =
 
 MAX_DEBUG = 40
 
+# Sichtbare Bedienelemente, offene Dialoge und Meldungen – zeigt, woran ein Formular hängt
+_ZUSTAND_JS = r"""
+() => {
+  const sichtbar = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0
+    && getComputedStyle(e).visibility !== 'hidden'; };
+  const t = e => (e.innerText || e.value || e.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  return {
+    url: location.href,
+    dialoge: [...document.querySelectorAll('dialog[open], [role=dialog], [aria-modal=true]')].filter(sichtbar).map(t),
+    buttons: [...document.querySelectorAll('button, [role=button], a.btn, input[type=submit]')].filter(sichtbar)
+      .slice(0, 60).map(e => ({text: t(e), disabled: e.disabled || e.getAttribute('aria-disabled') === 'true'})),
+    felder: [...document.querySelectorAll('input, select, textarea')].filter(sichtbar)
+      .map(e => ({label: e.labels && e.labels[0] ? t(e.labels[0]) : e.name, wert: e.value, invalid: e.getAttribute('aria-invalid')})),
+    meldungen: [...document.querySelectorAll('[role=alert], [class*=error i], [class*=fehler i], [class*=hint i]')]
+      .filter(sichtbar).map(t).filter(x => x).slice(0, 20),
+  };
+}
+"""
+
 
 def dump_debug(page: Page, name: str, cards: list[dict]) -> Path:
     basis = DATA_DIR / "debug"
@@ -305,6 +329,11 @@ def dump_debug(page: Page, name: str, cards: list[dict]) -> Path:
         shutil.rmtree(alt, ignore_errors=True)
     try:
         page.screenshot(path=str(out / "seite.png"), full_page=True)
+    except Exception:
+        pass
+    try:  # kleines Bild als Text, damit es auch über Proxys/APIs lesbar ist
+        (out / "bild.txt").write_text(base64.b64encode(page.screenshot(type="jpeg", quality=35)).decode(), encoding="utf-8")
+        (out / "zustand.txt").write_text(json.dumps(page.evaluate(_ZUSTAND_JS), ensure_ascii=False, indent=1), encoding="utf-8")
     except Exception:
         pass
     (out / "seite.html").write_text(page.content(), encoding="utf-8")
