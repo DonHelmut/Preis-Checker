@@ -1,11 +1,12 @@
 name: Preis-Checker
-version: "1.1.9"
+version: "1.2.0"
 slug: preis_checker
 description: Strom, Internet und Produktpreise vergleichen (Check24, Geizhals, Alternate, Mindfactory) mit Schnäppchen-Alarm
 url: https://github.com/DonHelmut/Preis-Checker
 arch:
   - amd64
-  - aarch64
+# Fertiges Image von GitHub (ghcr.io) statt Bau in HA – Updates hinterlassen keine Reste
+image: ghcr.io/donhelmut/{arch}-preis-checker
 startup: application
 boot: auto
 ingress: true

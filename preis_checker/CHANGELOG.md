@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.2.0
+- Fertiges Image von GitHub statt Bau in Home Assistant: Updates gehen schneller und hinterlassen keine ~2 GB Reste mehr
+- Einmalig aufräumen: Terminal → `ha supervisor repair`
+
 ## 1.1.9
 - Check24 Internet: Hausnummer aus der Vorschlagsliste wählen
 - Diagnose: Netzwerk-Anfragen (netz.txt) und JSON-Antworten abrufbar
