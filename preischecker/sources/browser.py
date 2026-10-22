@@ -82,8 +82,11 @@ def browser_page(cfg: dict):
         page = ctx.new_page()
         page.set_default_timeout(bcfg.get("timeout_sekunden", 60) * 1000)
         page._json_responses = []  # type: ignore[attr-defined]
+        page._anfragen = []  # type: ignore[attr-defined]
 
         def on_response(resp):
+            if resp.request.resource_type in ("document", "xhr", "fetch") and len(page._anfragen) < 400:  # type: ignore[attr-defined]
+                page._anfragen.append(f"{datetime.now():%H:%M:%S} {resp.status} {resp.request.method} {resp.url[:300]}")  # type: ignore[attr-defined]
             if "json" in (resp.headers.get("content-type") or ""):
                 try:
                     page._json_responses.append({"url": resp.url, "body": resp.json()})  # type: ignore[attr-defined]
@@ -201,7 +204,7 @@ def _sichtbar(loc):
     return None
 
 
-def pick_autocomplete(page: Page, text: str | None = None) -> None:
+def pick_autocomplete(page: Page, text: str | re.Pattern | None = None) -> None:
     """Ersten Vorschlag übernehmen. Check24 zeigt die Orte als Buttons in einer Liste („71404 Korb“)."""
     page.wait_for_timeout(1200)
     kandidaten = [page.get_by_role("option")]
@@ -306,6 +309,7 @@ def dump_debug(page: Page, name: str, cards: list[dict]) -> Path:
         pass
     (out / "seite.html").write_text(page.content(), encoding="utf-8")
     (out / "url.txt").write_text(page.url, encoding="utf-8")
+    (out / "netz.txt").write_text("\n".join(getattr(page, "_anfragen", [])), encoding="utf-8")
     (out / "kacheln.txt").write_text("\n\n=====\n\n".join(f"{c['href']}\n{c['text']}" for c in cards), encoding="utf-8")
     (out / "json.json").write_text(
         json.dumps(getattr(page, "_json_responses", []), ensure_ascii=False, indent=1, default=str)[:20_000_000],

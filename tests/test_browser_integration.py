@@ -163,7 +163,10 @@ def test_check24_dsl_adressdialog(tmp_path, monkeypatch):
           oninput="document.getElementById('l1').style.display='block'">
         <ul id="l1" style="display:none"><li onclick="document.getElementById('r1').value='Pestalozzistr.';
             this.parentNode.style.display='none'; document.getElementById('r2').disabled=false">Pestalozzistr.</li></ul>
-        <label for="r2">Nr.</label><input id="r2" type="text" disabled>
+        <label for="r2">Nr.</label><input id="r2" type="text" disabled
+          oninput="document.getElementById('l2').style.display='block'">
+        <ul id="l2" style="display:none"><li onclick="r2.value='19!'">19</li>
+          <li onclick="r2.value='9!'; this.parentNode.style.display='none'">9</li></ul>
         <button type="submit">fertig</button></form></dialog>
       <button type="button" onclick="document.title = 'falscher Button'"><p>ohne Router · mit Young Tarifen</p></button>
       <button type="button" onclick="document.title = [r0.value, r1.value, r2.value].join('|')">vergleichen</button>
@@ -173,7 +176,7 @@ def test_check24_dsl_adressdialog(tmp_path, monkeypatch):
     cfg = {"browser": {"timeout_sekunden": 5},
            "standort": {"plz": "71404", "strasse": "Pestalozzistraße", "hausnummer": "9"}}
     with b.browser_page(cfg) as page:
-        assert check24._dsl_cards(page, cfg)[1] == [{"text": "71404 Korb|Pestalozzistr.|9"}]
+        assert check24._dsl_cards(page, cfg)[1] == [{"text": "71404 Korb|Pestalozzistr.|9!"}]
 
 
 def test_ergebnis_im_neuen_tab(tmp_path):

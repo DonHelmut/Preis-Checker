@@ -8,6 +8,7 @@ ausführen und den Ordner unter data/debug/ prüfen.
 from __future__ import annotations
 
 import logging
+import re
 from urllib.parse import urlencode
 
 from ..models import InternetAngebot, StromAngebot
@@ -55,7 +56,9 @@ def _dsl_cards(page, cfg: dict):
     if ort.get("strasse") and b.fill_first(page, ["straße", "strasse", "street"], ort["strasse"]):
         b.pick_autocomplete(page, ort["strasse"][:8])  # Liste kürzt evtl. „…str.“
     if ort.get("hausnummer"):
-        b.fill_first(page, ["hausnummer", "hausnr", "nr", "streetnumber", "housenumber"], str(ort["hausnummer"]))
+        nr = str(ort["hausnummer"])
+        if b.fill_first(page, ["hausnummer", "hausnr", "nr", "streetnumber", "housenumber"], nr):
+            b.pick_autocomplete(page, re.compile(rf"^\s*{re.escape(nr)}\s*$"))  # Check24 will die Nummer aus der Liste
     b.bestaetigen(page)
     page = b.submit(page)
     return page, b.wait_for_cards(page, r"Mbit", timeout_s=timeout)
