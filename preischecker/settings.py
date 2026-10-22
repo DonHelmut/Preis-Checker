@@ -46,6 +46,8 @@ ABSCHNITTE = [
         ("produkte.schnaeppchen_prozent", "Schnäppchen ab", "float", "% unter eigenem Durchschnitt / Shop-Rabatt"),
         ("produkte.markt_prozent", "Preisfehler ab", "float", "% unter anderen Shops"),
         ("produkte.parallel", "Gleichzeitige Abfragen", "int", "Browser-Tabs parallel (je ca. 250 MB RAM)"),
+        ("produkte.sperre_pause_stunden", "Pause nach Bot-Sperre", "float", "Stunden (0 = nie pausieren)"),
+        ("produkte.empfindlich_abstand_stunden", "Danach höchstens alle", "float", "Stunden – für Shops, die in den letzten 7 Tagen gesperrt haben"),
     ]),
     ("Prüfung", "", [
         ("pruefung.intervall_stunden", "Prüfen alle", "float", "Stunden (6 = 4× täglich)"),

@@ -155,11 +155,17 @@ def pruefen(cfg: dict, kategorien: list[str] | None = None, debug: bool = False)
 
 
 def _ohne_gesperrte(cfg: dict, auftraege: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
-    """Gesperrte Shops eine Weile auslassen, statt sie immer wieder anzufragen."""
-    gesperrt = db.gesperrte_shops(float(cfg["produkte"].get("sperre_pause_stunden", 12)))
-    if gesperrt:
-        log.info("Pausiert wegen Bot-Sperre: %s", ", ".join(sorted(gesperrt)))
-    return [a for a in auftraege if a[1] not in gesperrt]
+    """Gesperrte Shops eine Weile auslassen, statt sie immer wieder anzufragen.
+
+    Wer in den letzten Tagen gesperrt hat, wird danach nur noch selten abgefragt (Standard: 1× täglich).
+    """
+    p = cfg["produkte"]
+    pause = float(p.get("sperre_pause_stunden", 24))
+    gesperrt = db.gesperrte_shops(pause)
+    selten = db.schonend_zurueckhalten(float(p.get("empfindlich_abstand_stunden", 20)) if pause > 0 else 0)
+    if gesperrt or selten:
+        log.info("Pausiert wegen Bot-Sperre: %s", ", ".join(sorted(set(gesperrt) | set(selten))))
+    return [a for a in auftraege if a[1] not in gesperrt and a[1] not in selten]
 
 
 def produkte_pruefen(cfg: dict, debug: bool = False) -> list[dict]:

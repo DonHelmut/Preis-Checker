@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.2.6
+- Bot-Sperre: Pause 24 statt 12 Stunden; Shops, die in den letzten 7 Tagen gesperrt haben, werden danach nur noch 1× täglich abgefragt (beides in den Einstellungen änderbar)
+- Shop-Übersicht zeigt „schonend 1×/Tag“ mit Zeitpunkt der nächsten Abfrage
+
 ## 1.2.5
 - Internet: Mobilfunk-Router (GigaCube, Speedbox), Young-Tarife (unter 28) und nicht abschließbare Tarife ausgeblendet (in den Einstellungen zuschaltbar)
 - Internet: Tarifname korrekt erkannt (vorher stand z. B. „Befriedigend“ als Tarif)

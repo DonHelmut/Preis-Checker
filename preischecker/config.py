@@ -42,5 +42,7 @@ def load_config(path: Path | str | None = None) -> dict:
     for key in ("strom", "internet"):
         cfg.setdefault(key, {"aktiv": False})
         cfg[key].setdefault("filter", {})
-    cfg.setdefault("produkte", {"aktiv": False})
+    p = cfg.setdefault("produkte", {"aktiv": False})
+    p.setdefault("sperre_pause_stunden", 24)
+    p.setdefault("empfindlich_abstand_stunden", 20)
     return cfg

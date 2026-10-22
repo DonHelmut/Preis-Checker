@@ -65,8 +65,10 @@ def produkt_detail(cfg: dict, artikel: dict) -> dict:
 def shop_uebersicht(cfg: dict) -> list[dict]:
     status = db.shop_status_alle()
     aktiv = aktive_shops(cfg)
-    pause = float(cfg["produkte"].get("sperre_pause_stunden", 12))
+    pause = float(cfg["produkte"].get("sperre_pause_stunden", 24))
+    abstand = float(cfg["produkte"].get("empfindlich_abstand_stunden", 20))
     gesperrt = db.gesperrte_shops(pause)
+    selten = db.schonend_zurueckhalten(abstand if pause > 0 else 0)
     out = []
     for s in SHOP_LISTE:
         st = status.get(s.key)
@@ -75,6 +77,11 @@ def shop_uebersicht(cfg: dict) -> list[dict]:
         elif s.key in gesperrt:
             bis = datetime.fromisoformat(gesperrt[s.key]) + timedelta(hours=pause)
             zustand, text = "fehler", f"Bot-Sperre · pausiert bis {bis:%H:%M}"
+        elif s.key in selten:
+            ab = datetime.fromisoformat(selten[s.key]) + timedelta(hours=abstand)
+            zustand = "ok" if st["ok"] and st["treffer"] else "warnung"
+            text = f"{st['treffer']} Preise · " if st["ok"] else ""
+            text += f"schonend 1×/Tag (nach Sperre) · wieder ab {ab:%d.%m. %H:%M}"
         elif not st["ok"]:
             from .runner import fehler_kurz
             zustand, text = "fehler", fehler_kurz(st["fehler"] or "Fehler").capitalize()
