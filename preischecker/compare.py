@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 from statistics import median
 
@@ -46,6 +47,11 @@ def strom(cfg: dict, angebote: list[StromAngebot]) -> dict:
     }
 
 
+_NICHT_ABSCHLIESSBAR = re.compile(r"nicht abschließbar", re.I)
+_MOBILFUNK = re.compile(r"über mobilfunk|speedbox|gigacube|\(\d+\s*gb\)", re.I)
+_YOUNG = re.compile(r"unter 2\d jahren|\byoung\b", re.I)
+
+
 def internet(cfg: dict, angebote: list[InternetAngebot]) -> dict:
     v = cfg["internet"]
     f = v["filter"]
@@ -55,6 +61,12 @@ def internet(cfg: dict, angebote: list[InternetAngebot]) -> dict:
         if f.get("min_download_mbit") and (a.download_mbit or 0) < f["min_download_mbit"]:
             continue
         if f.get("max_laufzeit_monate") and a.laufzeit_monate > f["max_laufzeit_monate"]:
+            continue
+        if _NICHT_ABSCHLIESSBAR.search(a.rohtext):  # nur zum Vergleich gelistet
+            continue
+        if not f.get("mobilfunk", False) and _MOBILFUNK.search(a.rohtext):  # Datenlimit, kein Festnetz
+            continue
+        if not f.get("young", False) and _YOUNG.search(a.rohtext):
             continue
         monat = a.durchschnitt_monat(f.get("bonus_einrechnen", True))
         if monat is None:

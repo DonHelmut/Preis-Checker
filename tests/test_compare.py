@@ -40,3 +40,19 @@ def test_strom_bonus_zaehlt_nicht_dauerhaft():
     assert e["angebote"][0]["kosten_jahr"] == 1232.16 and e["beste_ersparnis_jahr"] == -107.04
     assert e["angebote"][0]["ersparnis_1_jahr"] == 201.96
     assert e["bonus_tipp"]["ersparnis_1_jahr"] == 201.96
+
+
+def test_internet_ohne_mobilfunk_young_und_nicht_abschliessbar():
+    cfg = {"internet": {"preis_monat": 42.99, "filter": {"min_download_mbit": 250}}}
+    def a(name, roh, preis):
+        return InternetAngebot(name, download_mbit=250, preis_monat_regulaer=preis, rohtext=roh, laufzeit_monate=24)
+    e = compare.internet(cfg, [
+        a("MagentaMobil Speedbox S Young (100GB)", "über Mobilfunk\nunter 28 Jahren", 29.95),
+        a("GigaCube Zuhause 100GB", "über Mobilfunk", 34.99),
+        a("Zuhause 250 Flex", "Bei CHECK24 nicht abschließbar", 30.0),
+        a("Magenta Zuhause XL Young", "unter 28 Jahren", 31.0),
+        a("Komplett easy speed 250", "250 MBit/s\nmtl. kündbar", 39.95),
+    ])
+    assert [r["anbieter"] for r in e["angebote"]] == ["Komplett easy speed 250"]
+    cfg["internet"]["filter"].update(mobilfunk=True, young=True)
+    assert len(compare.internet(cfg, [a("GigaCube Zuhause 100GB Young", "über Mobilfunk\nunter 28 Jahren", 34.99)])["angebote"]) == 1

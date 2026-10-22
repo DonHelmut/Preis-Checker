@@ -96,7 +96,8 @@ def parse_internet(text: str, quelle: str = "") -> InternetAngebot | None:
     mbits = [int(m) for m in re.findall(r"(\d{2,5})\s*M[Bb]it", text)]
     if not mbits:
         return None
-    anbieter, tarif = anbieter_und_tarif(text)
+    name = _name_vor_note(text)
+    anbieter, tarif = (name, "") if name else anbieter_und_tarif(text)
     angebot = InternetAngebot(
         anbieter=anbieter,
         tarif=tarif,
