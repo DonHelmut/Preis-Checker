@@ -1,5 +1,5 @@
 name: Preis-Checker
-version: "1.2.0"
+version: "1.2.1"
 slug: preis_checker
 description: Strom, Internet und Produktpreise vergleichen (Check24, Geizhals, Alternate, Mindfactory) mit Schnäppchen-Alarm
 url: https://github.com/DonHelmut/Preis-Checker

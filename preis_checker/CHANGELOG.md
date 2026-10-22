@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.2.1
+- Strom: Ersparnis wird dauerhaft (ohne Neukundenbonus) berechnet; Bonus-Effekt im 1. Jahr nur noch als Hinweis
+- Alarm nur, wenn ein Tarif auch ohne Bonus günstiger ist
+
 ## 1.2.0
 - Fertiges Image von GitHub statt Bau in Home Assistant: Updates gehen schneller und hinterlassen keine ~2 GB Reste mehr
 - Einmalig aufräumen: Terminal → `ha supervisor repair`

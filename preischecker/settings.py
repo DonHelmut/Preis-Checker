@@ -24,7 +24,6 @@ ABSCHNITTE = [
         ("strom.vertragsende", "Vertragsende", "date", "leer = unbefristet"),
         ("strom.kuendigungsfrist_wochen", "Kündigungsfrist", "int", "Wochen"),
         ("strom.filter.max_laufzeit_monate", "Max. Laufzeit neuer Tarif", "int", "Monate"),
-        ("strom.filter.bonus_einrechnen", "Neukundenbonus einrechnen", "bool", "gilt nur im 1. Jahr"),
         ("strom.filter.nur_oekostrom", "Nur Ökostrom", "bool", ""),
     ]),
     ("Internet", "", [
