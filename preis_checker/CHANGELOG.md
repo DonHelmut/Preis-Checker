@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.1.9
+- Check24 Internet: Hausnummer aus der Vorschlagsliste wählen
+- Diagnose: Netzwerk-Anfragen (netz.txt) und JSON-Antworten abrufbar
+
 ## 1.1.8
 - Check24 Strom: neues Kachel-Format („37,56 Ct./kWh · 18,17 €/Monat“) wird erkannt; Flextarife ignoriert
 - Check24: nach dem Absenden bis zu 12 s auf Seitenwechsel/neuen Tab warten, sonst Klick wiederholen
