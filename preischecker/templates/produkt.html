@@ -23,6 +23,16 @@
   </div>
 </div>
 
+{% for v in d.letzte.verdacht or [] %}
+<div class="card banner warnung" style="margin-top:12px">
+  <div class="ico">{{ icon("blitz") }}</div>
+  <div><b>Möglicher Preisfehler: {{ v.preis|eur }} bei {{ anbieter(v) }}</b>
+    <span class="ink2">Unter deinem Mindestpreis, sieht aber nicht nach Zubehör aus. Bitte prüfen – kann auch ein Fake-Händler sein.</span>
+    <div class="klein" style="margin-top:4px">{% if v.url %}<a href="{{ v.url }}" target="_blank" rel="noopener">{{ v.name }} {{ icon("extern", "s") }}</a>{% else %}{{ v.name }}{% endif %}</div>
+  </div>
+</div>
+{% endfor %}
+
 <div class="kpis" style="margin-top:20px">
   <div class="card kpi"><div class="label">Aktuell günstigster</div>
     <div class="wert">{{ best.preis|eur if best else "–" }}</div>

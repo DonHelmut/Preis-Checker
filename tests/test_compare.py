@@ -56,3 +56,24 @@ def test_internet_ohne_mobilfunk_young_und_nicht_abschliessbar():
     assert [r["anbieter"] for r in e["angebote"]] == ["Komplett easy speed 250"]
     cfg["internet"]["filter"].update(mobilfunk=True, young=True)
     assert len(compare.internet(cfg, [a("GigaCube Zuhause 100GB Young", "über Mobilfunk\nunter 28 Jahren", 34.99)])["angebote"]) == 1
+
+
+def test_preisfehler_verdacht_unter_mindestpreis(monkeypatch):
+    from preischecker.models import ProduktAngebot
+    from preischecker import notify
+    cfg = {"produkte": {}}
+    artikel = {"suche": "Nintendo Switch 2", "min_preis": 300, "darf_nicht_enthalten": ["schutzfolie"]}
+    a = [ProduktAngebot("Nintendo Switch 2 Spielkonsole inkl. Dock und Joy-Con Controller", 49.0, "amazon", "https://a"),
+         ProduktAngebot("Hülle für Nintendo Switch 2", 19.99, "amazon"),
+         ProduktAngebot("Nintendo Switch 2 Schutzfolie", 9.99, "otto"),
+         ProduktAngebot("Mario Kart World Spiel Nintendo Switch 2", 69.0, "mediamarkt"),
+         ProduktAngebot("Nintendo Switch 2", 449.0, "saturn"),
+         ProduktAngebot("Nintendo Switch 2", 459.0, "expert")]
+    e = compare.produkt(cfg, artikel, a)
+    assert e["bester_preis"] == 449.0  # Verdacht verfälscht den Bestpreis nicht
+    assert [v["preis"] for v in e["verdacht"]] == [49.0]
+    assert notify.verdacht_neu(e, None) and not notify.verdacht_neu(e, e)  # nur einmal melden
+    gesendet = []
+    monkeypatch.setattr(notify, "_verteilen", lambda cfg, text, daten: gesendet.append(text))
+    notify.senden_verdacht(cfg, e, None)
+    assert "Möglicher Preisfehler" in gesendet[0] and "49.00 €" in gesendet[0] and "449.00" in gesendet[0]

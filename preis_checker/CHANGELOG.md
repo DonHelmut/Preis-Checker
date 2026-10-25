@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.7
+- Möglicher Preisfehler: Angebote unter dem Mindestpreis, die nicht nach Zubehör aussehen, werden gemeldet (einmalig, mit Prüf-Hinweis) und auf der Produktseite angezeigt – statt still aussortiert
+
 ## 1.2.6
 - Bot-Sperre: Pause 24 statt 12 Stunden; Shops, die in den letzten 7 Tagen gesperrt haben, werden danach nur noch 1× täglich abgefragt (beides in den Einstellungen änderbar)
 - Shop-Übersicht zeigt „schonend 1×/Tag“ mit Zeitpunkt der nächsten Abfrage

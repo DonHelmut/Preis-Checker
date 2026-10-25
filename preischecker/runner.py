@@ -187,6 +187,7 @@ def produkte_pruefen(cfg: dict, debug: bool = False) -> list[dict]:
         db.speichern(ergebnis, "; ".join(f) or None)
         db.preise_speichern(suche, zeit, ergebnis["angebote"])
         notify.senden_produkt(cfg, ergebnis, vorher)
+        notify.senden_verdacht(cfg, ergebnis, vorher)
         ergebnisse.append({**ergebnis, "fehler": "; ".join(f) or None})
     return ergebnisse
 
