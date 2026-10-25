@@ -84,13 +84,36 @@ def internet(cfg: dict, angebote: list[InternetAngebot]) -> dict:
     }
 
 
+# Wörter, die auf Zubehör statt auf das Produkt selbst hindeuten
+_ZUBEHOER = re.compile(
+    r"\b(für|fuer|for|kompatibel|passend|geeignet)\b|hülle|huelle|\bcase\b|cover|tasche|folie|glas|schutz|skin|"
+    r"adapter|ladestation|ladegerät|netzteil|halter|ständer|staender|grip|\bspiele?\b|videospiel|"
+    r"gutschein|guthaben|\bcode\b|abo\b|mitgliedschaft|ersatz|reparatur|kühler|kuehler|lüfter|luefter|"
+    r"backplate|wasserkühl|riser|fernbedienung|\bleer|attrappe|dummy|aufkleber|poster|figur|tasse", re.I)
+
+
+def _sieht_nach_hauptprodukt_aus(name: str) -> bool:
+    return len(name) <= 160 and not _ZUBEHOER.search(name)
+
+
 def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: list[float] | None = None) -> dict:
     """verlauf = bisherige Bestpreise (für Schnäppchen-Erkennung)."""
-    from .sources.shops import passt
+    from .sources.shops import ablehnungsgrund
     nur_lieferbar = cfg["produkte"].get("nur_lieferbar", True)
     beste: dict[tuple, dict] = {}
+    verdacht: dict[tuple, dict] = {}
     for a in angebote:
-        if not passt(a, artikel) or (nur_lieferbar and a.lieferbar is False):
+        if nur_lieferbar and a.lieferbar is False:
+            continue
+        grund = ablehnungsgrund(a, artikel)
+        if grund == "unter Mindestpreis" and _sieht_nach_hauptprodukt_aus(a.name):
+            key = (a.shop, a.name.lower())
+            if key not in verdacht or a.preis < verdacht[key]["preis"]:
+                row = a.to_dict()
+                row.pop("rohtext")
+                verdacht[key] = row
+            continue
+        if grund:
             continue
         key = (a.shop, a.name.lower())
         if key not in beste or a.preis < beste[key]["preis"]:
@@ -124,4 +147,6 @@ def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: l
         "ziel_erreicht": bool(rows and ziel and bester <= ziel),
         "schnaeppchen": bool(gruende),
         "gruende": gruende,
+        # Unter dem Mindestpreis, aber kein Zubehör: möglicher Preisfehler (oder Fake-Händler) – nur Hinweis
+        "verdacht": sorted(verdacht.values(), key=lambda r: r["preis"])[:3],
     }

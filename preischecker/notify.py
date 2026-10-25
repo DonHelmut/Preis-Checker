@@ -62,6 +62,27 @@ def senden_produkt(cfg: dict, ergebnis: dict, vorher: dict | None) -> None:
         "ziel_erreicht": ergebnis.get("ziel_erreicht", False), "gruende": ergebnis.get("gruende") or []})
 
 
+def verdacht_neu(ergebnis: dict, vorher: dict | None) -> list[dict]:
+    """Verdächtig billige Angebote, die beim letzten Lauf noch nicht (so billig) da waren."""
+    alt = {(v["shop"], v["name"]): v["preis"] for v in (vorher or {}).get("verdacht") or []}
+    return [v for v in ergebnis.get("verdacht") or []
+            if (v["shop"], v["name"]) not in alt or v["preis"] < alt[(v["shop"], v["name"])]]
+
+
+def senden_verdacht(cfg: dict, ergebnis: dict, vorher: dict | None) -> None:
+    neu = verdacht_neu(ergebnis, vorher)
+    if not neu:
+        return
+    v = neu[0]
+    normal = f" (sonst ab {ergebnis['bester_preis']:.2f} €)" if ergebnis.get("bester_preis") else ""
+    text = "\n".join([f"Möglicher Preisfehler: {ergebnis['suche']}",
+                      f"{v['preis']:.2f} € bei {anbieter(v)}{normal}",
+                      "Bitte prüfen – kann auch ein Fake-Händler oder falsches Produkt sein.",
+                      v["name"], v.get("url") or ""])
+    _verteilen(cfg, text.strip(), {"kategorie": "preisfehler", "suche": ergebnis["suche"], "preis": v["preis"],
+                                   "shop": v["shop"], "anbieter": anbieter(v), "url": v.get("url"), "name": v["name"]})
+
+
 def ha_dienste(n: dict) -> list[str]:
     dienste = list(n.get("ha_dienste") or [])
     if n.get("ha_dienst") and n["ha_dienst"] not in dienste:  # alte Einzel-Einstellung
