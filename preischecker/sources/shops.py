@@ -205,7 +205,15 @@ def enthaelt_suche(name_: str, woerter: list[str]) -> bool:
         idx = name_norm.index(phrase) + len(phrase)
         if not (phrase[-1].isdigit() and idx < len(name_norm) and name_norm[idx].isdigit()):
             return True
-    return all(_token_passt(w, name_klein, name_norm) for w in woerter)
+    if not all(_token_passt(w, name_klein, name_norm) for w in woerter):
+        return False
+    # Zahl muss beim Wort davor stehen: „Switch 2“ ja, „Switch (OLED) … 2 Controller“ nein; „2. Generation“ ok
+    for vor, zahl in zip(woerter, woerter[1:]):
+        v, z = re.escape(vor.lower()), re.escape(zahl.lower())
+        if zahl.isdigit() and not vor.isdigit() and not re.search(
+                rf"{v}\W{{0,3}}{z}(?![0-9])|(?<![0-9]){z}\W{{0,3}}{v}", name_klein):
+            return False
+    return True
 
 
 def ablehnungsgrund(angebot: ProduktAngebot, artikel: dict) -> str | None:
