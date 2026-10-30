@@ -230,3 +230,16 @@ def test_haendlerzeile_mit_falschem_produkt():
     assert zeile_falsches_produkt("eBay\nNintendo Switch OLED 64GB Konsole Neon Rot Blau NEU OVP\n299,00 €", art)
     assert not zeile_falsches_produkt("MediaMarkt\nNintendo Switch 2 Konsole\n449,00 €", art)
     assert not zeile_falsches_produkt("Alternate\n€ 452,90\nVersand ab € 4,99", art)  # ohne Titel: ok
+
+
+def test_ebay_und_kleinanzeigen_ausgeschlossen():
+    from preischecker import compare
+    from preischecker.models import ProduktAngebot
+    from preischecker.sources.shops import ausgeschlossen
+    cfg = {"produkte": {}}
+    assert ausgeschlossen("eBay", "", cfg) and ausgeschlossen(None, "https://www.kleinanzeigen.de/s-anzeige/1", cfg)
+    assert not ausgeschlossen("Alternate", "https://alternate.de", cfg)
+    assert not ausgeschlossen("eBay", "", {"produkte": {"haendler_ausschliessen": []}})
+    a = [ProduktAngebot("Nintendo Switch 2", 299.0, "idealo", "https://www.ebay.de/itm/1", haendler="eBay"),
+         ProduktAngebot("Nintendo Switch 2", 449.0, "saturn", "https://saturn")]
+    assert compare.produkt(cfg, {"suche": "Nintendo Switch 2"}, a)["bester_preis"] == 449.0

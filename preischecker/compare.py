@@ -86,13 +86,16 @@ def internet(cfg: dict, angebote: list[InternetAngebot]) -> dict:
 
 def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: list[float] | None = None) -> dict:
     """verlauf = bisherige Bestpreise (für Schnäppchen-Erkennung)."""
-    from .sources.shops import VERGLEICHSPORTALE, ablehnungsgrund, ist_refurbished, sieht_nach_hauptprodukt_aus
+    from .sources.shops import (VERGLEICHSPORTALE, ablehnungsgrund, ausgeschlossen, ist_refurbished,
+                                sieht_nach_hauptprodukt_aus)
     nur_lieferbar = cfg["produkte"].get("nur_lieferbar", True)
     beste: dict[tuple, dict] = {}
     verdacht: dict[tuple, dict] = {}
     refurb: dict[tuple, dict] = {}
     for a in angebote:
         if nur_lieferbar and a.lieferbar is False:
+            continue
+        if ausgeschlossen(a.haendler, a.url, cfg):
             continue
         grund = ablehnungsgrund(a, artikel)
         if ist_refurbished(a):  # nur anzeigen: kein Bestpreis, kein Alarm
