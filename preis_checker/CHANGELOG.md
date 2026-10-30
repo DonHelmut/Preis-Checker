@@ -1,6 +1,12 @@
 # Changelog
 
 
+## 1.2.8
+- Links führen bei idealo/Geizhals direkt zum Angebot des günstigsten Händlers (nicht mehr zur Vergleichsseite)
+- Push-Meldung antippen öffnet direkt das Angebot (Android und iPhone, auch bei nachgeholten Meldungen)
+- Preisfehler über idealo/Geizhals nur noch, wenn der Preis auf der Produktseite wirklich bei einem Händler steht
+- Fix: „Versand ab 4,99 €“ wurde auf Vergleichsseiten als Preis gelesen
+
 ## 1.2.7
 - Möglicher Preisfehler: Angebote unter dem Mindestpreis, die nicht nach Zubehör aussehen, werden gemeldet (einmalig, mit Prüf-Hinweis) und auf der Produktseite angezeigt – statt still aussortiert
 

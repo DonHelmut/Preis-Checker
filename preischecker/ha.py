@@ -82,9 +82,13 @@ def sync_schleife(config_path=None) -> None:
         time.sleep(600)
 
 
-def benachrichtigen(dienst: str, text: str) -> None:
+def benachrichtigen(dienst: str, text: str, url: str | None = None) -> None:
+    """Antippen der Handy-Meldung öffnet `url` (Android: clickAction, iOS: url)."""
     domain, _, service = dienst.partition(".")
-    _post(f"/services/{domain}/{service}", {"title": "Preis-Checker", "message": text})
+    daten = {"title": "Preis-Checker", "message": text}
+    if url and service.startswith("mobile_app_"):
+        daten["data"] = {"clickAction": url, "url": url}
+    _post(f"/services/{domain}/{service}", daten)
 
 
 def dienst_name(dienst: str) -> str:

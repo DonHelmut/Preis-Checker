@@ -75,3 +75,25 @@ def test_ohne_addon_keine_checkboxen_und_nichts_geloescht(tmp_path, monkeypatch)
     app.post("/einstellungen", data={})
     from preischecker.config import load_raw
     assert load_raw(path)["benachrichtigung"]["ha_dienste"] == ["notify.x"]
+
+
+def test_push_oeffnet_angebot(monkeypatch):
+    aufrufe = []
+    monkeypatch.setenv("SUPERVISOR_TOKEN", "x")
+    monkeypatch.setattr(ha, "_post", lambda pfad, daten: aufrufe.append((pfad, daten)))
+    from preischecker import notify
+    cfg = {"benachrichtigung": {"ha_dienste": ["notify.mobile_app_kalle", "persistent_notification.create"]}}
+    notify._laut_senden(cfg, "Preisfehler", {"url": "https://www.alternate.de/x"})
+    handy, glocke = aufrufe
+    assert handy[1]["data"] == {"clickAction": "https://www.alternate.de/x", "url": "https://www.alternate.de/x"}
+    assert "data" not in glocke[1]  # HA-Glocke kennt keine Links
+
+
+def test_nachgeholt_behaelt_link(tmp_path, monkeypatch):
+    from preischecker import db, notify
+    monkeypatch.setattr(db, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(notify, "in_ruhezeit", lambda n, jetzt=None: False)
+    gesendet = []
+    monkeypatch.setattr(notify, "_laut_senden", lambda cfg, text, payload: gesendet.append(payload))
+    db.nachricht_merken("Möglicher Preisfehler", {"url": "https://shop/x"})
+    assert notify.nachholen({"benachrichtigung": {}}) == 1 and gesendet[0]["url"] == "https://shop/x"

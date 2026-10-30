@@ -119,11 +119,13 @@ def nachholen(cfg: dict) -> int:
     gemerkt = db.nachrichten_abholen()
     if not gemerkt:
         return 0
+    links = [u for u in (json.loads(m.get("payload") or "{}").get("url") for m in gemerkt) if u]
     if len(gemerkt) == 1:
         text = gemerkt[0]["text"]
     else:
         text = f"Preis-Checker – {len(gemerkt)} Meldungen aus der Ruhezeit:\n\n" + "\n\n".join(m["text"] for m in gemerkt)
-    _laut_senden(cfg, text, {"kategorie": "nachgeholt", "anzahl": len(gemerkt)})
+    # Antippen öffnet das (erste) Angebot
+    _laut_senden(cfg, text, {"kategorie": "nachgeholt", "anzahl": len(gemerkt), "url": links[0] if links else None})
     return len(gemerkt)
 
 
@@ -137,13 +139,14 @@ def _laut_senden(cfg: dict, text: str, payload: dict) -> None:
                 {"Content-Type": "application/json"},
             )
         if n.get("ntfy_topic"):
-            _post(f"https://ntfy.sh/{n['ntfy_topic']}", text.encode("utf-8"), {"Title": "Preis-Checker"})
+            kopf = {"Title": "Preis-Checker", **({"Click": payload["url"]} if payload.get("url") else {})}
+            _post(f"https://ntfy.sh/{n['ntfy_topic']}", text.encode("utf-8"), kopf)
         if n.get("webhook_url"):
             _post(n["webhook_url"], json.dumps({"text": text, **payload}).encode(), {"Content-Type": "application/json"})
         if ha.aktiv():
             for dienst in ha_dienste(n):
                 try:
-                    ha.benachrichtigen(dienst, text)
+                    ha.benachrichtigen(dienst, text, payload.get("url"))
                 except Exception as e:
                     log.error("HA-Dienst %s fehlgeschlagen: %s", dienst, e)
     except Exception as e:  # Benachrichtigung darf den Lauf nicht abbrechen
