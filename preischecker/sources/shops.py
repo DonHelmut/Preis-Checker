@@ -62,7 +62,8 @@ STANDARD_AUS = {"conrad", "proshop"}  # standardmäßig aus, per Einstellung zus
 
 _BETRAG = r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2})|[,.][-–])"  # 449,90 · 449,– · 449.– (Galaxus)
 _PREIS = re.compile(rf"€\s*{_BETRAG}|{_BETRAG}\s*€?")
-_KEIN_PREIS_DAVOR = re.compile(r"(versand|uvp|statt|spar|ersparnis|rabatt|cashback|gutschein|pfand|zzgl)\W*$", re.I)
+_KEIN_PREIS_DAVOR = re.compile(r"(versand\w*|uvp|statt|spar|ersparnis|rabatt|cashback|gutschein|pfand|zzgl)"
+                               r"(\W+(ab|von|nur|für|fuer))?\W*$", re.I)  # auch „Versand ab € 4,99“
 _KEIN_PREIS_DANACH = re.compile(r"^\W*(mtl|monat|/\s*m|rate|finanz)", re.I)
 _ALTPREIS_DAVOR = re.compile(r"(uvp|statt|vorher|bisher|ursprünglich)\W*$", re.I)
 _AKTION = re.compile(r"\bangebot\b|\bdeal\b|\bsale\b|reduziert|aktion|black ?friday|cyber|tagesangebot|-\s?\d{1,2}\s?%", re.I)
@@ -231,8 +232,8 @@ def haendler_aus_karte(card: dict) -> str | None:
     return None
 
 
-def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict) -> tuple[str, float] | None:
-    """Produktseite eines Preisvergleichs öffnen und den günstigsten Händler auslesen."""
+def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict) -> tuple[str, float, str] | None:
+    """Produktseite eines Preisvergleichs öffnen: günstigster Händler, sein Preis und Link zum Angebot."""
     page.goto(angebot.url, wait_until="domcontentloaded")
     if not b.schutzseite_abwarten(page, 10):
         return None
@@ -243,29 +244,58 @@ def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict) -> tuple[str, f
     for c in cards:
         p, h = preis(c["text"]), haendler_aus_karte(c)
         if p is not None and h:
-            zeilen.append((p, h))
+            zeilen.append((p, h, c.get("href") or ""))
     if not zeilen:
         b.dump_debug(page, f"{angebot.shop}-haendler-{norm(angebot.name)[:24]}", cards)
         return None
-    p, h = min(zeilen)
-    return h, p
+    p, h, link = min(zeilen, key=lambda z: z[0])
+    return h, p, link
+
+
+# Wörter, die auf Zubehör statt auf das Produkt selbst hindeuten
+_ZUBEHOER = re.compile(
+    r"\b(für|fuer|for|kompatibel|passend|geeignet)\b|hülle|huelle|\bcase\b|cover|tasche|folie|glas|schutz|skin|"
+    r"adapter|ladestation|ladegerät|netzteil|halter|ständer|staender|grip|\bspiele?\b|videospiel|"
+    r"gutschein|guthaben|\bcode\b|abo\b|mitgliedschaft|ersatz|reparatur|kühler|kuehler|lüfter|luefter|"
+    r"backplate|wasserkühl|riser|fernbedienung|\bleer|attrappe|dummy|aufkleber|poster|figur|tasse", re.I)
+
+
+def sieht_nach_hauptprodukt_aus(name: str) -> bool:
+    return len(name) <= 160 and not _ZUBEHOER.search(name)
+
+
+def preisfehler_kandidat(angebot: ProduktAngebot, artikel: dict) -> bool:
+    """Unter dem Mindestpreis, sonst aber passend und kein Zubehör."""
+    return ablehnungsgrund(angebot, artikel) == "unter Mindestpreis" and sieht_nach_hauptprodukt_aus(angebot.name)
 
 
 def haendler_ergaenzen(page, angebote: list[ProduktAngebot], artikel: dict, cfg: dict, anzahl: int = 1) -> None:
-    """Beim günstigsten passenden Preisvergleichs-Treffer den tatsächlichen Händler nachtragen."""
-    kandidaten = sorted((a for a in angebote if a.url and not a.url.startswith(("javascript:", "#"))
-                         and passt(a, artikel)),
-                        key=lambda a: a.preis)[:anzahl]
+    """Bei Preisvergleichs-Treffern den tatsächlichen Händler samt Link nachtragen.
+
+    Geprüft werden der günstigste passende Treffer und bis zu zwei mögliche Preisfehler. Ein Preisfehler gilt nur,
+    wenn der Preis auf der Produktseite wirklich bei einem Händler steht (sonst oft Gebraucht-/Fremdangebot).
+    """
+    nutzbar = [a for a in angebote if a.url and not a.url.startswith(("javascript:", "#"))]
+    kandidaten = sorted((a for a in nutzbar if passt(a, artikel)), key=lambda a: a.preis)[:anzahl]
+    kandidaten += sorted((a for a in nutzbar if preisfehler_kandidat(a, artikel)), key=lambda a: a.preis)[:2]
     for a in kandidaten:
         try:
             ergebnis = haendler_ermitteln(page, a, cfg)
         except Exception as e:
             log.info("Händler für %s nicht ermittelbar: %s", a.name[:40], e)
+            a.bestaetigt = False
             continue
-        if ergebnis:
-            a.haendler, p = ergebnis
-            if abs(p - a.preis) <= max(2.0, a.preis * 0.05):  # gleiche Größenordnung → Händlerpreis übernehmen
-                a.preis = p
+        if not ergebnis:
+            a.bestaetigt = False
+            continue
+        h, p, link = ergebnis
+        a.bestaetigt = abs(p - a.preis) <= max(2.0, a.preis * 0.05)
+        if a.bestaetigt:  # gleiche Größenordnung → Händler, Preis und Direktlink übernehmen
+            a.haendler, a.preis = h, p
+            if link.startswith("http"):
+                a.vergleich_url, a.url = a.url, link
+        elif passt(a, artikel):
+            a.haendler = h  # Händler trotzdem nennen; Preis/Link bleiben vom Portal
 
 
 def anbieter(a) -> str:

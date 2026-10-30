@@ -75,13 +75,14 @@ def test_haendler_aus_preisvergleich(tmp_path, monkeypatch):
     produkt = tmp_path / "produkt.html"
     produkt.write_text("""<html><body><h1>Sonos Beam (Gen 2)</h1><div class="angebote">
       <div class="offer"><span>€ 469,00</span><img alt="MediaMarkt"><span>lagernd</span></div>
-      <div class="offer"><span>€ 449,00</span><span>Versand ab € 4,99</span><a href="#">Alternate</a></div>
+      <div class="offer"><span>€ 449,00</span><span>Versand ab € 4,99</span><a href="https://www.alternate.de/angebot/123">Alternate</a></div>
       <div class="offer"><span>€ 479,00</span><span>kaufen bei technik-shop24.de</span></div>
     </div></body></html>""")
     suche = tmp_path / "suche.html"
     suche.write_text(f"""<html><body><div class="liste">
       <a href="file://{produkt}"><div>Sonos Beam (Gen 2) schwarz</div><span>ab € 449,00</span></a>
       <a href="file://{produkt}"><div>Sonos Beam (Gen 2) Wandhalterung</div><span>ab € 39,00</span></a>
+      <a href="file://{produkt}#weiss"><div>Sonos Beam (Gen 2) weiß</div><span>ab € 49,00</span></a>
       <a href="file://{produkt}"><div>Sonos Arc Ultra</div><span>ab € 899,00</span></a>
     </div></body></html>""")
     cfg = {"browser": {"timeout_sekunden": 10}, "produkte": {}}
@@ -94,7 +95,13 @@ def test_haendler_aus_preisvergleich(tmp_path, monkeypatch):
     assert fehler is None
     beam = next(a for a in gefunden if a.name == "Sonos Beam (Gen 2) schwarz")
     assert beam.haendler == "Alternate" and beam.preis == 449.0
-    assert all(a.haendler is None for a in gefunden if a is not beam)  # nur der günstigste passende Treffer
+    assert beam.url == "https://www.alternate.de/angebot/123" and beam.vergleich_url.startswith("file://")
+    # „ab 49 €“ steht auf der Produktseite bei keinem Händler → kein Preisfehler-Alarm
+    weiss = next(a for a in gefunden if a.name == "Sonos Beam (Gen 2) weiß")
+    assert weiss.bestaetigt is False
+    from preischecker import compare
+    assert compare.produkt({"produkte": {}}, artikel, gefunden)["verdacht"] == []
+    assert all(a.haendler is None for a in gefunden if a not in (beam, weiss))  # nur günstigster Treffer + Verdacht
 
 
 def test_spaetes_cookie_banner_blockiert_nicht(tmp_path):

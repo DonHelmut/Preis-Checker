@@ -81,6 +81,8 @@ class ProduktAngebot:
     alter_preis: float | None = None  # Streichpreis/UVP
     aktion: bool = False              # Shop kennzeichnet Angebot/Deal
     haendler: str | None = None       # bei Preisvergleichen: tatsächlicher Händler
+    vergleich_url: str | None = None  # bei Preisvergleichen: Produktseite des Portals (url = Link zum Händler)
+    bestaetigt: bool | None = None    # Preis auf der Produktseite des Portals wiedergefunden
     rohtext: str = field(default="", repr=False)
 
     def to_dict(self) -> dict:
