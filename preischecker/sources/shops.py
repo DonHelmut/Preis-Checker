@@ -116,13 +116,22 @@ def alter_preis(text: str) -> float | None:
     return max(werte) if werte else None
 
 
-def name(text: str) -> str:
+def name(text: str, suche: str | None = None) -> str:
+    """Produktname aus dem Kacheltext.
+
+    Bevorzugt die Zeile mit den Suchwörtern – sonst gewinnt bei Preisvergleichen die lange Technik-Zeile
+    („Soundbar ohne Subwoofer, 3.0, WLAN …“) gegen den eigentlichen Titel („Sonos Beam (Gen.2)“).
+    """
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     kandidaten = [l for l in lines if "€" not in l and re.search(r"[A-Za-z]{2}", l) and len(l) <= 200]
+    if suche:
+        mit_suche = [l for l in kandidaten if enthaelt_suche(l, suche.split())]
+        if mit_suche:
+            return max(mit_suche, key=len)
     return max(kandidaten, key=len) if kandidaten else (lines[0] if lines else "?")
 
 
-def parse_produkt(card: dict, shop: str) -> ProduktAngebot | None:
+def parse_produkt(card: dict, shop: str, suche: str | None = None) -> ProduktAngebot | None:
     text = card["text"]
     p = preis(text)
     if p is None:
@@ -131,7 +140,7 @@ def parse_produkt(card: dict, shop: str) -> ProduktAngebot | None:
     alt = alter_preis(text)
     if alt is not None and alt <= p:
         alt = None
-    return ProduktAngebot(name=name(text), preis=p, shop=shop, url=card.get("href", ""),
+    return ProduktAngebot(name=name(text, suche), preis=p, shop=shop, url=card.get("href", ""),
                           lieferbar=lieferbar, alter_preis=alt,
                           aktion=bool(alt or _AKTION.search(text)), rohtext=text[:1500])
 
@@ -189,9 +198,13 @@ def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool
         b.dump_debug(page, f"{shop}-{norm(suche)[:30]}-schutz", [])
         raise BlockiertError(f"Bot-Schutz: {page.title()[:60]}")
     b.accept_cookies(page)
-    cards = b.wait_for_cards(page, r"€|,[-–]", timeout_s=min(cfg["browser"].get("timeout_sekunden", 60), 30),
+    # Kacheln müssen ein Suchwort enthalten – sonst gewinnen z. B. Finanzierungs-Fußnoten mit „€“ (MediaMarkt)
+    woerter = [re.escape(w) for w in suche.split() if len(w) > 2] or [r"€|,[-–]"]
+    cards = b.wait_for_cards(page, "|".join(woerter), timeout_s=min(cfg["browser"].get("timeout_sekunden", 60), 30),
                              min_len=25, min_cards=2)
-    angebote = [a for a in (parse_produkt(c, shop) for c in cards) if a]
+    if len(cards) < 2:
+        cards = page.evaluate(b.FIND_CARDS_JS, {"keyword": r"€|,[-–]", "minLen": 25})
+    angebote = [a for a in (parse_produkt(c, shop, suche) for c in cards) if a]
     if debug or not angebote:
         pfad = b.dump_debug(page, f"{shop}-{norm(suche)[:30]}", cards)
         log.warning("%s '%s': %d Kacheln, %d Preise erkannt. Debug: %s", shop, suche, len(cards), len(angebote), pfad)

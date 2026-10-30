@@ -162,3 +162,16 @@ def test_netto_direkt_hinter_preis():
     assert preis(proshop) == 861.17
     # Kleiner Betrag daneben (Bundle-Zubehör) darf nicht als Nettopreis gelten
     assert preis(proshop + "\nDieses Bundle enthält: Spiel 59,99 €") == 861.17
+
+
+def test_name_idealo_titel_statt_technikzeile():
+    from preischecker.sources.shops import parse_produkt, passt
+    karte = {"href": "https://www.idealo.de/x", "text": "Sonos Beam (Gen.2)\n\nSoundbar ohne Subwoofer, 3.0, WLAN, HDMI, "
+             "LAN Netzwerk (Ethernet), Multiroom\n\nNote ∅ 1,8\n443\n66 Angebote\nab437,99 €\nProduktdetails"}
+    a = parse_produkt(karte, "idealo", "Sonos Beam Gen 2")
+    assert a.name == "Sonos Beam (Gen.2)" and a.preis == 437.99
+    assert passt(a, {"suche": "Sonos Beam Gen 2", "min_preis": 350})
+    # Set mit Sub Mini bleibt als Bundle draußen
+    s = parse_produkt({"text": "Sonos Beam (Gen.2) + Sub Mini 3.1 Entertainment Set Black\n\nSoundbar ohne Subwoofer, 3.0, "
+                               "WLAN, HDMI\n\nab803,90 €"}, "idealo", "Sonos Beam Gen 2")
+    assert not passt(s, {"suche": "Sonos Beam Gen 2", "min_preis": 350})
