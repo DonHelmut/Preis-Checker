@@ -83,6 +83,7 @@ class ProduktAngebot:
     haendler: str | None = None       # bei Preisvergleichen: tatsächlicher Händler
     vergleich_url: str | None = None  # bei Preisvergleichen: Produktseite des Portals (url = Link zum Händler)
     bestaetigt: bool | None = None    # Preis auf der Produktseite des Portals wiedergefunden
+    zustand: str | None = None        # None = neu, sonst z. B. "refurbished"
     rohtext: str = field(default="", repr=False)
 
     def to_dict(self) -> dict:

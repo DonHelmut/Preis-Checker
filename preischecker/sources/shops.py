@@ -66,6 +66,9 @@ _KEIN_PREIS_DAVOR = re.compile(r"(versand\w*|uvp|statt|spar|ersparnis|rabatt|cas
                                r"(\W+(ab|von|nur|für|fuer))?\W*$", re.I)  # auch „Versand ab € 4,99“
 _KEIN_PREIS_DANACH = re.compile(r"^[ \t€*]*(%|prozent|mtl\b|monat|/\s*m|x\s*\d)", re.I)  # nur dieselbe Zeile
 # Finanzierung: Zinssatz, Raten, Mindestrate, Gesamtbetrag sind keine Kaufpreise (MediaMarkt/Saturn)
+# Marktplatz-/Gebrauchthinweise („Zusätzlich neue und refurbished Angebote ab 407,99 €“) sind nicht der Shoppreis
+_NEBENANGEBOT = re.compile(r"(refurbished|gebraucht|generalüberholt|b-ware|weitere angebote|marktplatz|"
+                           r"angebote ab|anderen? (händler|anbieter))[^\n€]{0,30}$", re.I)
 _FINANZIERUNG = re.compile(r"(zins\w*|\brate[n]?|mindestrate|finanzierung\w*|gesamtbetrag|"
                            r"p\.\s?a\.|mind\.)[^\n€]{0,25}$", re.I)
 _ALTPREIS_DAVOR = re.compile(r"(uvp|statt|vorher|bisher|ursprünglich)\W*$", re.I)
@@ -96,7 +99,7 @@ def preis(text: str) -> float | None:
     """Endpreis für Privatkunden. Nettopreise (Geschäftskunden, „zzgl. MwSt.“) werden mit 19 % hochgerechnet."""
     kandidaten = [(w, umfeld) for w, davor, danach, umfeld in _betraege(text)
                   if not _KEIN_PREIS_DAVOR.search(davor) and not _KEIN_PREIS_DANACH.search(danach)
-                  and not _FINANZIERUNG.search(davor)]
+                  and not _FINANZIERUNG.search(davor) and not _NEBENANGEBOT.search(davor)]
     if not kandidaten:
         return None
     if not _NETTO.search(text):
@@ -129,10 +132,27 @@ def name(text: str, suche: str | None = None) -> str:
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     kandidaten = [l for l in lines if "€" not in l and re.search(r"[A-Za-z]{2}", l) and len(l) <= 200]
     if suche:
-        mit_suche = [l for l in kandidaten if enthaelt_suche(l, suche.split())]
+        # Zeile, die nur den Suchbegriff wiederholt (Brotkrumen/„Ergebnisse für …“), ist kein Produktname
+        mit_suche = [l for l in kandidaten if enthaelt_suche(l, suche.split()) and l.lower() != suche.strip().lower()]
         if mit_suche:
             return max(mit_suche, key=len)
     return max(kandidaten, key=len) if kandidaten else (lines[0] if lines else "?")
+
+
+_REFURB = re.compile(r"refurbished|generalüberholt|b-ware|gebraucht", re.I)
+
+
+def nebenangebote(card: dict, haupt: ProduktAngebot) -> list[ProduktAngebot]:
+    """Zusätzlich angezeigte Refurbished-/Marktplatz-Preise als eigenes, gekennzeichnetes Angebot.
+
+    z. B. MediaMarkt: „Zusätzlich neue und refurbished Angebote ab 407,99 €“. Nur wenn günstiger als der Neupreis.
+    """
+    werte = [w for w, davor, *_ in _betraege(card["text"]) if _NEBENANGEBOT.search(davor) and _REFURB.search(davor)]
+    if not werte or min(werte) >= haupt.preis:
+        return []
+    davor = "neu oder refurbished" if re.search(r"neue und refurbished", card["text"], re.I) else "refurbished"
+    return [ProduktAngebot(name=f"{haupt.name} ({davor})", preis=min(werte), shop=haupt.shop, url=haupt.url,
+                           lieferbar=haupt.lieferbar, zustand="refurbished", rohtext=haupt.rohtext)]
 
 
 def parse_produkt(card: dict, shop: str, suche: str | None = None) -> ProduktAngebot | None:
@@ -208,7 +228,11 @@ def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool
                              min_len=25, min_cards=2)
     if len(cards) < 2:
         cards = page.evaluate(b.FIND_CARDS_JS, {"keyword": r"€|,[-–]", "minLen": 25})
-    angebote = [a for a in (parse_produkt(c, shop, suche) for c in cards) if a]
+    angebote = []
+    for c in cards:
+        a = parse_produkt(c, shop, suche)
+        if a:
+            angebote += [a, *nebenangebote(c, a)]
     if debug or not angebote:
         pfad = b.dump_debug(page, f"{shop}-{norm(suche)[:30]}", cards)
         log.warning("%s '%s': %d Kacheln, %d Preise erkannt. Debug: %s", shop, suche, len(cards), len(angebote), pfad)
@@ -283,7 +307,8 @@ def sieht_nach_hauptprodukt_aus(name: str) -> bool:
 
 def preisfehler_kandidat(angebot: ProduktAngebot, artikel: dict) -> bool:
     """Unter dem Mindestpreis, sonst aber passend und kein Zubehör."""
-    return ablehnungsgrund(angebot, artikel) == "unter Mindestpreis" and sieht_nach_hauptprodukt_aus(angebot.name)
+    return (not angebot.zustand and ablehnungsgrund(angebot, artikel) == "unter Mindestpreis"
+            and sieht_nach_hauptprodukt_aus(angebot.name))
 
 
 def haendler_ergaenzen(page, angebote: list[ProduktAngebot], artikel: dict, cfg: dict, anzahl: int = 1) -> None:

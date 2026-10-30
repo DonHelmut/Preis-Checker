@@ -182,3 +182,30 @@ def test_finanzierung_ist_kein_preis():
     mm = ("SONOS Beam (Gen 2) Soundbar, Schwarz\n-16% UVP 549,– €\n459,99 €\nFinanzierung eff. Zins p.a. 10,90 %\n"
           "18 mtl. Raten 27,70 € monatlich\nGesamtbetrag: 498,60 €\n0% effektiver Jahreszins, mind. 9,10 €")
     assert preis(mm) == 459.99
+
+
+def test_refurbished_hinweis_und_suchzeile():
+    from preischecker.sources.shops import parse_produkt, passt
+    mm = ("SONOS Beam Gen.2, Soundbar, Schwarz\n-16%\nUVP 549,– €\n549,00€\n459,99 €\n459,99€\ninkl. MwSt.\n"
+          "Bezahle in 18 Raten à 27,70 € (eff. Zins. P.a. 10,90 %)** Gesamtpreis 498,60 €\n"
+          "Zusätzlich neue und refurbished Angebote ab 407,99 € erhältlich")
+    assert preis(mm) == 459.99
+    # Proshop: Suchseite wiederholt den Suchbegriff, gefunden wurde aber nur ein Sub 4
+    karte = {"text": "Startseite\nSonos Beam Gen 2\n1 Produkte\nSonos SUB 4 - White\nWireless-Subwoofer Sonos Sub 4 "
+                     "liefert tiefen, dynamischen Bass der nächsten Generation\n799,00 €"}
+    a = parse_produkt(karte, "proshop", "Sonos Beam Gen 2")
+    assert not passt(a, {"suche": "Sonos Beam Gen 2"})
+    # echter Treffer, dessen Titel genau dem Suchbegriff entspricht, bleibt erhalten
+    b = parse_produkt({"text": "Sonos Beam Gen 2\n449,00 €"}, "proshop", "Sonos Beam Gen 2")
+    assert b.name == "Sonos Beam Gen 2" and passt(b, {"suche": "Sonos Beam Gen 2"})
+
+
+def test_refurbished_als_eigenes_angebot():
+    from preischecker.sources.shops import nebenangebote, parse_produkt
+    karte = {"href": "https://mm/beam", "text": "SONOS Beam Gen.2, Soundbar, Schwarz\n459,99 €\ninkl. MwSt.\n"
+             "Zusätzlich neue und refurbished Angebote ab 407,99 € erhältlich"}
+    neu = parse_produkt(karte, "mediamarkt", "Sonos Beam Gen 2")
+    [ref] = nebenangebote(karte, neu)
+    assert neu.preis == 459.99 and ref.preis == 407.99 and ref.zustand == "refurbished"
+    assert ref.name.endswith("(neu oder refurbished)") and ref.url == "https://mm/beam"
+    assert nebenangebote({"text": "Beam\n459,99 €"}, neu) == []

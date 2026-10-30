@@ -1,6 +1,11 @@
 # Changelog
 
 
+## 1.2.11
+- MediaMarkt/Saturn: „neue und refurbished Angebote ab …“ ist nicht mehr der Neupreis, sondern ein eigenes, gekennzeichnetes Angebot „(neu oder refurbished)“ – zählt mit, wenn günstiger
+- Refurbished-Angebote lösen keinen Preisfehler-Alarm aus
+- Fix Proshop: wiederholter Suchbegriff auf der Ergebnisseite galt als Produktname (Sub 4 als „Beam Gen 2“ gewertet)
+
 ## 1.2.10
 - Fix: Finanzierungsangaben (eff. Zins 10,90 %, Monatsraten, Mindestrate, Gesamtbetrag) wurden als Preis gelesen → falscher Preisfehler-Alarm bei MediaMarkt
 

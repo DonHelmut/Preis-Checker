@@ -94,7 +94,7 @@ def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: l
         if nur_lieferbar and a.lieferbar is False:
             continue
         grund = ablehnungsgrund(a, artikel)
-        if grund == "unter Mindestpreis" and sieht_nach_hauptprodukt_aus(a.name):
+        if grund == "unter Mindestpreis" and not a.zustand and sieht_nach_hauptprodukt_aus(a.name):
             if a.shop in VERGLEICHSPORTALE and not a.bestaetigt:
                 continue  # Portal-„ab“-Preis ohne passenden Händler (oft gebraucht/Variante) → kein Alarm
             key = (a.shop, a.name.lower())
