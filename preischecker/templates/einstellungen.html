@@ -76,7 +76,8 @@
       {% elif typ == "date" %}<input type="date" name="{{ pfad }}" value="{{ wert or '' }}">
       {% elif typ == "time" %}<input type="time" name="{{ pfad }}" value="{{ wert or '' }}" style="max-width:140px">
       {% elif typ == "password" %}<input type="password" name="{{ pfad }}" value="" placeholder="{{ '•••••• (gespeichert)' if wert else '' }}" autocomplete="off">
-      {% else %}<input type="text" name="{{ pfad }}" value="{{ wert or '' }}">{% endif %}
+      {% elif typ == "liste" %}<input type="text" name="{{ pfad }}" value="{{ anzeigen(wert, typ) }}">
+            {% else %}<input type="text" name="{{ pfad }}" value="{{ wert or '' }}">{% endif %}
       {% if tipp %}<small>{{ tipp }}</small>{% endif %}
     </label>
   {% endfor %}

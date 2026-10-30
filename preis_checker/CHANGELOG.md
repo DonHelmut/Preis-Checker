@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.2.15
+- eBay und Kleinanzeigen ausgeschlossen (auch als Händler bei idealo/Geizhals); Liste in den Einstellungen unter „Händler ausschließen“
+- Gehörte der „ab“-Preis eines Preisvergleichs einem ausgeschlossenen Angebot, zählt der günstigste gültige Händler
+
 ## 1.2.14
 - Fix: Auf idealo/Geizhals-Produktseiten wurden Händlerzeilen mit anderem Produkt genommen (eBay-Angebot „Switch OLED“ unter „Switch 2“). Zeilen, deren Titel nicht zur Suche passt, zählen nicht mehr
 

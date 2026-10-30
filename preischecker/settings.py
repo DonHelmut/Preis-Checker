@@ -48,6 +48,7 @@ ABSCHNITTE = [
         ("produkte.parallel", "Gleichzeitige Abfragen", "int", "Browser-Tabs parallel (je ca. 250 MB RAM)"),
         ("produkte.sperre_pause_stunden", "Pause nach Bot-Sperre", "float", "Stunden (0 = nie pausieren)"),
         ("produkte.empfindlich_abstand_stunden", "Danach höchstens alle", "float", "Stunden – für Shops, die in den letzten 7 Tagen gesperrt haben"),
+        ("produkte.haendler_ausschliessen", "Händler ausschließen", "liste", "kommagetrennt, z. B. ebay, kleinanzeigen"),
     ]),
     ("Prüfung", "", [
         ("pruefung.intervall_stunden", "Prüfen alle", "float", "Stunden (6 = 4× täglich)"),
@@ -100,6 +101,8 @@ def anzeigen(wert, typ: str) -> str:
         return ""
     if typ == "float" and isinstance(wert, float) and wert.is_integer():
         return str(int(wert))
+    if typ == "liste" and isinstance(wert, list):
+        return ", ".join(wert)
     return str(wert)
 
 
@@ -118,6 +121,8 @@ def uebernehmen(cfg: dict, form) -> list[str]:
                     wert = date.fromisoformat(roh).isoformat() if roh.strip() else None
                 elif typ == "time":
                     wert = dtime.fromisoformat(roh.strip()).strftime("%H:%M") if roh.strip() else None
+                elif typ == "liste":
+                    wert = [w.strip() for w in roh.split(",") if w.strip()]
                 else:
                     wert = roh.strip() or None
             except ValueError:

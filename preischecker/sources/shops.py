@@ -307,6 +307,16 @@ def zeile_falsches_produkt(text: str, artikel: dict | None) -> bool:
     return True
 
 
+AUSGESCHLOSSEN_STANDARD = ["ebay", "kleinanzeigen"]
+
+
+def ausgeschlossen(haendler: str | None, url: str, cfg: dict) -> bool:
+    """Marktplätze mit Privat-/Fremdangeboten (eBay, Kleinanzeigen) – Einstellung produkte.haendler_ausschliessen."""
+    liste = (cfg.get("produkte") or {}).get("haendler_ausschliessen", AUSGESCHLOSSEN_STANDARD)
+    text = f"{haendler or ''} {url}".lower()
+    return any(norm(x) and norm(x) in norm(text) for x in liste)
+
+
 def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict,
                        artikel: dict | None = None) -> tuple[str, float, str] | None:
     """Produktseite eines Preisvergleichs öffnen: günstigster Händler, sein Preis und Link zum Angebot."""
@@ -319,7 +329,8 @@ def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict,
     zeilen = []
     for c in cards:
         p, h = preis(c["text"]), haendler_aus_karte(c)
-        if p is not None and h and not zeile_falsches_produkt(c["text"], artikel):
+        if p is not None and h and not zeile_falsches_produkt(c["text"], artikel) \
+                and not ausgeschlossen(h, c.get("href") or "", cfg):
             zeilen.append((p, h, c.get("href") or ""))
     if not zeilen:
         b.dump_debug(page, f"{angebot.shop}-haendler-{norm(angebot.name)[:24]}", cards)
@@ -367,6 +378,10 @@ def haendler_ergaenzen(page, angebote: list[ProduktAngebot], artikel: dict, cfg:
             continue
         h, p, link = ergebnis
         a.bestaetigt = abs(p - a.preis) <= max(2.0, a.preis * 0.05)
+        if not a.bestaetigt and passt(a, artikel) and p > a.preis:
+            # Der „ab“-Preis des Portals gehörte einem ausgeschlossenen/falschen Angebot (z. B. eBay) →
+            # günstigster gültiger Händler zählt
+            a.bestaetigt = True
         if a.bestaetigt:  # gleiche Größenordnung → Händler, Preis und Direktlink übernehmen
             a.haendler, a.preis = h, p
             if link.startswith("http"):
