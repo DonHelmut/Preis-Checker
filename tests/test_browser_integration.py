@@ -196,3 +196,19 @@ def test_ergebnis_im_neuen_tab(tmp_path):
     with b.browser_page({"browser": {"timeout_sekunden": 5}}) as page:
         page.goto(f"file://{tmp_path}/start.html")
         assert b.submit(page).title() == "Ergebnis"
+
+
+def test_fussnoten_mit_euro_sind_keine_kacheln(tmp_path):
+    """MediaMarkt-Stil: mehr Finanzierungs-Fußnoten mit „€“ als Produktkacheln."""
+    from preischecker.sources import shops
+    noten = "".join(f"<p>** Ratenfinanzierung ab € 100.- Finanzierungssumme, Hinweis Nummer {i} mit viel Text</p>"
+                    for i in range(5))
+    (tmp_path / "mm.html").write_text(f"""<html><body><div class="liste">
+      <a href="/p/1"><div>SONOS Beam (Gen 2) Soundbar, Schwarz</div><span>449,00 €</span></a>
+      <a href="/p/2"><div>SONOS Beam (Gen 2) Soundbar, Weiß</div><span>459,00 €</span></a>
+    </div><footer>{noten}</footer></body></html>""")
+    from preischecker.sources import browser as b
+    with b.browser_page({"browser": {"timeout_sekunden": 5}}) as page:
+        gefunden = shops.suchen(page, "mediamarkt", f"file://{tmp_path}/mm.html?{{q}}", "Sonos Beam Gen 2",
+                                {"browser": {"timeout_sekunden": 5}, "produkte": {}})
+    assert sorted(a.preis for a in gefunden) == [449.0, 459.0]

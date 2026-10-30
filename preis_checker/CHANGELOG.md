@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.2.9
+- Fix idealo/Geizhals: Produktname war oft die Technik-Zeile („Soundbar ohne Subwoofer …“) → Treffer wie „Sonos Beam (Gen.2)“ fielen raus
+- Fix MediaMarkt: Finanzierungs-Fußnoten mit „€“ wurden als Produktkacheln erkannt; Kacheln müssen jetzt ein Suchwort enthalten
+
 ## 1.2.8
 - Links führen bei idealo/Geizhals direkt zum Angebot des günstigsten Händlers (nicht mehr zur Vergleichsseite)
 - Push-Meldung antippen öffnet direkt das Angebot (Android und iPhone, auch bei nachgeholten Meldungen)
