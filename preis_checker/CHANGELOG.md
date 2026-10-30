@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.16
+- Fix: „Switch 2“ passte auf die alte Switch OLED („… 2 Controller“). Zahlen im Suchbegriff müssen jetzt beim Wort davor stehen („Switch 2“, „Gen.2“, „2. Generation“)
+
 ## 1.2.15
 - eBay und Kleinanzeigen ausgeschlossen (auch als Händler bei idealo/Geizhals); Liste in den Einstellungen unter „Händler ausschließen“
 - Gehörte der „ab“-Preis eines Preisvergleichs einem ausgeschlossenen Angebot, zählt der günstigste gültige Händler

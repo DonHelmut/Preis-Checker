@@ -243,3 +243,16 @@ def test_ebay_und_kleinanzeigen_ausgeschlossen():
     a = [ProduktAngebot("Nintendo Switch 2", 299.0, "idealo", "https://www.ebay.de/itm/1", haendler="eBay"),
          ProduktAngebot("Nintendo Switch 2", 449.0, "saturn", "https://saturn")]
     assert compare.produkt(cfg, {"suche": "Nintendo Switch 2"}, a)["bester_preis"] == 449.0
+
+
+def test_zahl_gehoert_zum_wort_davor():
+    from preischecker.sources.shops import enthaelt_suche
+    s2 = "Nintendo Switch 2".split()
+    assert not enthaelt_suche("Nintendo Switch (OLED-Modell) Handheld, 64 GB, 7 Zoll, Heimkonsole, 2 Controller, WLAN", s2)
+    assert enthaelt_suche("Nintendo Switch 2 Konsole inkl. Mario Kart", s2)
+    assert enthaelt_suche("Nintendo Switch2 Konsole", s2)
+    beam = "Sonos Beam Gen 2".split()
+    assert enthaelt_suche("Sonos Beam [2. Generation] schwarz", beam)
+    assert enthaelt_suche("Sonos Beam (Gen.2)", beam)
+    assert enthaelt_suche("SONOS Beam Gen.2, Soundbar", beam)
+    assert enthaelt_suche("AMD Radeon RX 9070 XT 16GB", "RX 9070 XT".split())
