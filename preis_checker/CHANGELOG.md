@@ -2,7 +2,8 @@
 
 
 ## 1.2.11
-- Fix MediaMarkt/Saturn: „neue und refurbished Angebote ab …“ wurde als Preis gelesen
+- MediaMarkt/Saturn: „neue und refurbished Angebote ab …“ ist nicht mehr der Neupreis, sondern ein eigenes, gekennzeichnetes Angebot „(neu oder refurbished)“ – zählt mit, wenn günstiger
+- Refurbished-Angebote lösen keinen Preisfehler-Alarm aus
 - Fix Proshop: wiederholter Suchbegriff auf der Ergebnisseite galt als Produktname (Sub 4 als „Beam Gen 2“ gewertet)
 
 ## 1.2.10

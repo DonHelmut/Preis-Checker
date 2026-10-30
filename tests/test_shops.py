@@ -198,3 +198,14 @@ def test_refurbished_hinweis_und_suchzeile():
     # echter Treffer, dessen Titel genau dem Suchbegriff entspricht, bleibt erhalten
     b = parse_produkt({"text": "Sonos Beam Gen 2\n449,00 €"}, "proshop", "Sonos Beam Gen 2")
     assert b.name == "Sonos Beam Gen 2" and passt(b, {"suche": "Sonos Beam Gen 2"})
+
+
+def test_refurbished_als_eigenes_angebot():
+    from preischecker.sources.shops import nebenangebote, parse_produkt
+    karte = {"href": "https://mm/beam", "text": "SONOS Beam Gen.2, Soundbar, Schwarz\n459,99 €\ninkl. MwSt.\n"
+             "Zusätzlich neue und refurbished Angebote ab 407,99 € erhältlich"}
+    neu = parse_produkt(karte, "mediamarkt", "Sonos Beam Gen 2")
+    [ref] = nebenangebote(karte, neu)
+    assert neu.preis == 459.99 and ref.preis == 407.99 and ref.zustand == "refurbished"
+    assert ref.name.endswith("(neu oder refurbished)") and ref.url == "https://mm/beam"
+    assert nebenangebote({"text": "Beam\n459,99 €"}, neu) == []

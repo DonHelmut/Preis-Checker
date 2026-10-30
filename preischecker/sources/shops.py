@@ -139,6 +139,22 @@ def name(text: str, suche: str | None = None) -> str:
     return max(kandidaten, key=len) if kandidaten else (lines[0] if lines else "?")
 
 
+_REFURB = re.compile(r"refurbished|generalüberholt|b-ware|gebraucht", re.I)
+
+
+def nebenangebote(card: dict, haupt: ProduktAngebot) -> list[ProduktAngebot]:
+    """Zusätzlich angezeigte Refurbished-/Marktplatz-Preise als eigenes, gekennzeichnetes Angebot.
+
+    z. B. MediaMarkt: „Zusätzlich neue und refurbished Angebote ab 407,99 €“. Nur wenn günstiger als der Neupreis.
+    """
+    werte = [w for w, davor, *_ in _betraege(card["text"]) if _NEBENANGEBOT.search(davor) and _REFURB.search(davor)]
+    if not werte or min(werte) >= haupt.preis:
+        return []
+    davor = "neu oder refurbished" if re.search(r"neue und refurbished", card["text"], re.I) else "refurbished"
+    return [ProduktAngebot(name=f"{haupt.name} ({davor})", preis=min(werte), shop=haupt.shop, url=haupt.url,
+                           lieferbar=haupt.lieferbar, zustand="refurbished", rohtext=haupt.rohtext)]
+
+
 def parse_produkt(card: dict, shop: str, suche: str | None = None) -> ProduktAngebot | None:
     text = card["text"]
     p = preis(text)
@@ -212,7 +228,11 @@ def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool
                              min_len=25, min_cards=2)
     if len(cards) < 2:
         cards = page.evaluate(b.FIND_CARDS_JS, {"keyword": r"€|,[-–]", "minLen": 25})
-    angebote = [a for a in (parse_produkt(c, shop, suche) for c in cards) if a]
+    angebote = []
+    for c in cards:
+        a = parse_produkt(c, shop, suche)
+        if a:
+            angebote += [a, *nebenangebote(c, a)]
     if debug or not angebote:
         pfad = b.dump_debug(page, f"{shop}-{norm(suche)[:30]}", cards)
         log.warning("%s '%s': %d Kacheln, %d Preise erkannt. Debug: %s", shop, suche, len(cards), len(angebote), pfad)
@@ -287,7 +307,8 @@ def sieht_nach_hauptprodukt_aus(name: str) -> bool:
 
 def preisfehler_kandidat(angebot: ProduktAngebot, artikel: dict) -> bool:
     """Unter dem Mindestpreis, sonst aber passend und kein Zubehör."""
-    return ablehnungsgrund(angebot, artikel) == "unter Mindestpreis" and sieht_nach_hauptprodukt_aus(angebot.name)
+    return (not angebot.zustand and ablehnungsgrund(angebot, artikel) == "unter Mindestpreis"
+            and sieht_nach_hauptprodukt_aus(angebot.name))
 
 
 def haendler_ergaenzen(page, angebote: list[ProduktAngebot], artikel: dict, cfg: dict, anzahl: int = 1) -> None:
