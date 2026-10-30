@@ -175,3 +175,10 @@ def test_name_idealo_titel_statt_technikzeile():
     s = parse_produkt({"text": "Sonos Beam (Gen.2) + Sub Mini 3.1 Entertainment Set Black\n\nSoundbar ohne Subwoofer, 3.0, "
                                "WLAN, HDMI\n\nab803,90 €"}, "idealo", "Sonos Beam Gen 2")
     assert not passt(s, {"suche": "Sonos Beam Gen 2", "min_preis": 350})
+
+
+def test_finanzierung_ist_kein_preis():
+    # MediaMarkt: Zinssatz, Monatsrate, Mindestrate und Gesamtbetrag dürfen nicht als Preis gelten
+    mm = ("SONOS Beam (Gen 2) Soundbar, Schwarz\n-16% UVP 549,– €\n459,99 €\nFinanzierung eff. Zins p.a. 10,90 %\n"
+          "18 mtl. Raten 27,70 € monatlich\nGesamtbetrag: 498,60 €\n0% effektiver Jahreszins, mind. 9,10 €")
+    assert preis(mm) == 459.99
