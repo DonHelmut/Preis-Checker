@@ -139,7 +139,11 @@ def name(text: str, suche: str | None = None) -> str:
     return max(kandidaten, key=len) if kandidaten else (lines[0] if lines else "?")
 
 
-_REFURB = re.compile(r"refurbished|generalüberholt|b-ware|gebraucht", re.I)
+_REFURB = re.compile(r"refurbished|generalüberholt|b-ware|gebraucht|renewed|wie neu|aussteller|retoure", re.I)
+
+
+def ist_refurbished(a: ProduktAngebot) -> bool:
+    return bool(a.zustand) or bool(_REFURB.search(a.name))
 
 
 def nebenangebote(card: dict, haupt: ProduktAngebot) -> list[ProduktAngebot]:

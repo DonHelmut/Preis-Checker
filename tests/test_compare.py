@@ -77,3 +77,17 @@ def test_preisfehler_verdacht_unter_mindestpreis(monkeypatch):
     monkeypatch.setattr(notify, "_verteilen", lambda cfg, text, daten: gesendet.append(text))
     notify.senden_verdacht(cfg, e, None)
     assert "Möglicher Preisfehler" in gesendet[0] and "49.00 €" in gesendet[0] and "449.00" in gesendet[0]
+
+
+def test_refurbished_nur_anzeigen():
+    from preischecker.models import ProduktAngebot
+    artikel = {"suche": "Sonos Beam Gen 2", "min_preis": 350, "zielpreis": 420}
+    a = [ProduktAngebot("SONOS Beam Gen.2 (neu oder refurbished)", 407.99, "mediamarkt", "https://mm/beam",
+                        zustand="refurbished"),
+         ProduktAngebot("Sonos Beam Gen 2 Amazon Renewed", 329.0, "amazon", "https://a/r"),
+         ProduktAngebot("SONOS Beam Gen.2, Soundbar, Schwarz", 459.99, "mediamarkt", "https://mm/beam"),
+         ProduktAngebot("Sonos Beam (Gen 2)", 449.0, "amazon")]
+    e = compare.produkt({"produkte": {}}, artikel, a)
+    assert e["bester_preis"] == 449.0 and not e["ziel_erreicht"] and not e["verdacht"]
+    assert [r["preis"] for r in e["refurbished"]] == [329.0, 407.99]
+    assert all(r["preis"] >= 449 for r in e["angebote"])

@@ -86,14 +86,23 @@ def internet(cfg: dict, angebote: list[InternetAngebot]) -> dict:
 
 def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: list[float] | None = None) -> dict:
     """verlauf = bisherige Bestpreise (für Schnäppchen-Erkennung)."""
-    from .sources.shops import VERGLEICHSPORTALE, ablehnungsgrund, sieht_nach_hauptprodukt_aus
+    from .sources.shops import VERGLEICHSPORTALE, ablehnungsgrund, ist_refurbished, sieht_nach_hauptprodukt_aus
     nur_lieferbar = cfg["produkte"].get("nur_lieferbar", True)
     beste: dict[tuple, dict] = {}
     verdacht: dict[tuple, dict] = {}
+    refurb: dict[tuple, dict] = {}
     for a in angebote:
         if nur_lieferbar and a.lieferbar is False:
             continue
         grund = ablehnungsgrund(a, artikel)
+        if ist_refurbished(a):  # nur anzeigen: kein Bestpreis, kein Alarm
+            if grund in (None, "unter Mindestpreis"):
+                key = (a.shop, a.name.lower())
+                if key not in refurb or a.preis < refurb[key]["preis"]:
+                    row = a.to_dict()
+                    row.pop("rohtext")
+                    refurb[key] = row
+            continue
         if grund == "unter Mindestpreis" and not a.zustand and sieht_nach_hauptprodukt_aus(a.name):
             if a.shop in VERGLEICHSPORTALE and not a.bestaetigt:
                 continue  # Portal-„ab“-Preis ohne passenden Händler (oft gebraucht/Variante) → kein Alarm
@@ -139,4 +148,6 @@ def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: l
         "gruende": gruende,
         # Unter dem Mindestpreis, aber kein Zubehör: möglicher Preisfehler (oder Fake-Händler) – nur Hinweis
         "verdacht": sorted(verdacht.values(), key=lambda r: r["preis"])[:3],
+        # Refurbished/gebraucht/Marktplatz – getrennt, nur zur Info
+        "refurbished": sorted(refurb.values(), key=lambda r: r["preis"])[:5],
     }
