@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.14
+- Fix: Auf idealo/Geizhals-Produktseiten wurden Händlerzeilen mit anderem Produkt genommen (eBay-Angebot „Switch OLED“ unter „Switch 2“). Zeilen, deren Titel nicht zur Suche passt, zählen nicht mehr
+
 ## 1.2.13
 - Neue Shops: EP: (media@home, u. a. Waiblingen und Winnenden) für Neuware; rebuy und Back Market für Refurbished (landen immer in der Tabelle „Refurbished & gebraucht“)
 - Produktname: Marke in eigener Zeile über dem Titel wird zusammengesetzt (EP); einzeilige Kacheln werden vor Bewertung/Preis abgeschnitten (Back Market)
