@@ -209,3 +209,16 @@ def test_refurbished_als_eigenes_angebot():
     assert neu.preis == 459.99 and ref.preis == 407.99 and ref.zustand == "refurbished"
     assert ref.name.endswith("(neu oder refurbished)") and ref.url == "https://mm/beam"
     assert nebenangebote({"text": "Beam\n459,99 €"}, neu) == []
+
+
+def test_neue_shops_namen_und_zustand():
+    from preischecker.sources.shops import SHOPS, parse_produkt, passt
+    art = {"suche": "Sonos Beam Gen 2", "min_preis": 350}
+    ep = parse_produkt({"text": "Sonos\nBeam (Gen 2) - Schwarz\n449,- €*\n\nSoundbar, 5.0 Kanal-System, aktiv, "
+                                "Nachtmodus, Dolby Atmos\nLieferung in 1-3 Werktagen"}, "ep", "Sonos Beam Gen 2")
+    assert ep.name == "Sonos Beam (Gen 2) - Schwarz" and ep.preis == 449.0 and passt(ep, art)
+    bm = parse_produkt({"text": "Tonleiste Sonos Beam (Gen 2) - Schwarz3,1/5 (3) AbPreis des erneuerten Produkts:"
+                                "490,00 € 511,70 € neuIm Vergleich zum Neupreis von 511,70 €"}, "backmarket",
+                       "Sonos Beam Gen 2")
+    assert bm.name == "Tonleiste Sonos Beam (Gen 2) - Schwarz" and bm.preis == 490.0
+    assert SHOPS["rebuy"].zustand == SHOPS["backmarket"].zustand == "refurbished" and SHOPS["ep"].zustand is None

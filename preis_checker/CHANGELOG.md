@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.2.13
+- Neue Shops: EP: (media@home, u. a. Waiblingen und Winnenden) für Neuware; rebuy und Back Market für Refurbished (landen immer in der Tabelle „Refurbished & gebraucht“)
+- Produktname: Marke in eigener Zeile über dem Titel wird zusammengesetzt (EP); einzeilige Kacheln werden vor Bewertung/Preis abgeschnitten (Back Market)
+
 ## 1.2.12
 - Refurbished/gebraucht/Renewed getrennt: kein Bestpreis, kein Zielpreis- oder Preisfehler-Alarm; eigene Tabelle „Refurbished & gebraucht“ mit Links auf der Produktseite, Hinweis „Refurbished ab …“ auf der Übersicht
 
