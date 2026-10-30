@@ -64,7 +64,10 @@ _BETRAG = r"(?<![\d.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d{2})|[,.][-–])"  # 449,
 _PREIS = re.compile(rf"€\s*{_BETRAG}|{_BETRAG}\s*€?")
 _KEIN_PREIS_DAVOR = re.compile(r"(versand\w*|uvp|statt|spar|ersparnis|rabatt|cashback|gutschein|pfand|zzgl)"
                                r"(\W+(ab|von|nur|für|fuer))?\W*$", re.I)  # auch „Versand ab € 4,99“
-_KEIN_PREIS_DANACH = re.compile(r"^\W*(mtl|monat|/\s*m|rate|finanz)", re.I)
+_KEIN_PREIS_DANACH = re.compile(r"^[ \t€*]*(%|prozent|mtl\b|monat|/\s*m|x\s*\d)", re.I)  # nur dieselbe Zeile
+# Finanzierung: Zinssatz, Raten, Mindestrate, Gesamtbetrag sind keine Kaufpreise (MediaMarkt/Saturn)
+_FINANZIERUNG = re.compile(r"(zins\w*|\brate[n]?|mindestrate|finanzierung\w*|gesamtbetrag|"
+                           r"p\.\s?a\.|mind\.)[^\n€]{0,25}$", re.I)
 _ALTPREIS_DAVOR = re.compile(r"(uvp|statt|vorher|bisher|ursprünglich)\W*$", re.I)
 _AKTION = re.compile(r"\bangebot\b|\bdeal\b|\bsale\b|reduziert|aktion|black ?friday|cyber|tagesangebot|-\s?\d{1,2}\s?%", re.I)
 _LIEFERBAR = re.compile(r"lagernd|auf lager|sofort (lieferbar|verfügbar)|versandfertig|lieferbar in", re.I)
@@ -92,7 +95,8 @@ def _betraege(text: str):
 def preis(text: str) -> float | None:
     """Endpreis für Privatkunden. Nettopreise (Geschäftskunden, „zzgl. MwSt.“) werden mit 19 % hochgerechnet."""
     kandidaten = [(w, umfeld) for w, davor, danach, umfeld in _betraege(text)
-                  if not _KEIN_PREIS_DAVOR.search(davor) and not _KEIN_PREIS_DANACH.search(danach)]
+                  if not _KEIN_PREIS_DAVOR.search(davor) and not _KEIN_PREIS_DANACH.search(danach)
+                  and not _FINANZIERUNG.search(davor)]
     if not kandidaten:
         return None
     if not _NETTO.search(text):

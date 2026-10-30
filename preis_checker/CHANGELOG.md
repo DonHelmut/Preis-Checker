@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.10
+- Fix: Finanzierungsangaben (eff. Zins 10,90 %, Monatsraten, Mindestrate, Gesamtbetrag) wurden als Preis gelesen → falscher Preisfehler-Alarm bei MediaMarkt
+
 ## 1.2.9
 - Fix idealo/Geizhals: Produktname war oft die Technik-Zeile („Soundbar ohne Subwoofer …“) → Treffer wie „Sonos Beam (Gen.2)“ fielen raus
 - Fix MediaMarkt: Finanzierungs-Fußnoten mit „€“ wurden als Produktkacheln erkannt; Kacheln müssen jetzt ein Suchwort enthalten
