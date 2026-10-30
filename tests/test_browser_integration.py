@@ -75,6 +75,7 @@ def test_haendler_aus_preisvergleich(tmp_path, monkeypatch):
     produkt = tmp_path / "produkt.html"
     produkt.write_text("""<html><body><h1>Sonos Beam (Gen 2)</h1><div class="angebote">
       <div class="offer"><span>€ 469,00</span><img alt="MediaMarkt"><span>lagernd</span></div>
+      <div class="offer"><span>€ 299,00</span><a href="https://www.ebay.de/itm/1">eBay</a><span>Sonos Beam (1. Generation) Soundbar</span></div>
       <div class="offer"><span>€ 449,00</span><span>Versand ab € 4,99</span><a href="https://www.alternate.de/angebot/123">Alternate</a></div>
       <div class="offer"><span>€ 479,00</span><span>kaufen bei technik-shop24.de</span></div>
     </div></body></html>""")

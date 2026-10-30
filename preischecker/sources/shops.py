@@ -293,7 +293,22 @@ def haendler_aus_karte(card: dict) -> str | None:
     return None
 
 
-def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict) -> tuple[str, float, str] | None:
+def zeile_falsches_produkt(text: str, artikel: dict | None) -> bool:
+    """Angebotszeile nennt ein ähnliches, aber anderes Produkt (z. B. eBay-Händler listet „Switch OLED“ unter Switch 2).
+
+    Zeilen ohne Produkttitel (nur Händler + Preis) gelten nicht als falsch.
+    """
+    if not artikel:
+        return False
+    woerter = artikel.get("muss_enthalten") or artikel["suche"].split()
+    erwaehnt = any(len(w) > 2 and not w.isdigit() and norm(w) in norm(text) for w in woerter)
+    if not erwaehnt or enthaelt_suche(text, woerter):
+        return False
+    return True
+
+
+def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict,
+                       artikel: dict | None = None) -> tuple[str, float, str] | None:
     """Produktseite eines Preisvergleichs öffnen: günstigster Händler, sein Preis und Link zum Angebot."""
     page.goto(angebot.url, wait_until="domcontentloaded")
     if not b.schutzseite_abwarten(page, 10):
@@ -304,7 +319,7 @@ def haendler_ermitteln(page, angebot: ProduktAngebot, cfg: dict) -> tuple[str, f
     zeilen = []
     for c in cards:
         p, h = preis(c["text"]), haendler_aus_karte(c)
-        if p is not None and h:
+        if p is not None and h and not zeile_falsches_produkt(c["text"], artikel):
             zeilen.append((p, h, c.get("href") or ""))
     if not zeilen:
         b.dump_debug(page, f"{angebot.shop}-haendler-{norm(angebot.name)[:24]}", cards)
@@ -342,7 +357,7 @@ def haendler_ergaenzen(page, angebote: list[ProduktAngebot], artikel: dict, cfg:
     kandidaten += sorted((a for a in nutzbar if preisfehler_kandidat(a, artikel)), key=lambda a: a.preis)[:2]
     for a in kandidaten:
         try:
-            ergebnis = haendler_ermitteln(page, a, cfg)
+            ergebnis = haendler_ermitteln(page, a, cfg, artikel)
         except Exception as e:
             log.info("Händler für %s nicht ermittelbar: %s", a.name[:40], e)
             a.bestaetigt = False

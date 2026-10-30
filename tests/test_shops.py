@@ -222,3 +222,11 @@ def test_neue_shops_namen_und_zustand():
                        "Sonos Beam Gen 2")
     assert bm.name == "Tonleiste Sonos Beam (Gen 2) - Schwarz" and bm.preis == 490.0
     assert SHOPS["rebuy"].zustand == SHOPS["backmarket"].zustand == "refurbished" and SHOPS["ep"].zustand is None
+
+
+def test_haendlerzeile_mit_falschem_produkt():
+    from preischecker.sources.shops import zeile_falsches_produkt
+    art = {"suche": "Nintendo Switch 2"}
+    assert zeile_falsches_produkt("eBay\nNintendo Switch OLED 64GB Konsole Neon Rot Blau NEU OVP\n299,00 €", art)
+    assert not zeile_falsches_produkt("MediaMarkt\nNintendo Switch 2 Konsole\n449,00 €", art)
+    assert not zeile_falsches_produkt("Alternate\n€ 452,90\nVersand ab € 4,99", art)  # ohne Titel: ok
