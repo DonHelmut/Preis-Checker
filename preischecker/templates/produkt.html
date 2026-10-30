@@ -65,6 +65,19 @@
   <script type="application/json" id="chart-daten">{{ d.chart|tojson }}</script>
 </div>
 
+{% if d.letzte.refurbished %}
+<div class="card" style="margin-top:20px">
+  <div class="card-head"><h2>Refurbished &amp; gebraucht</h2><span class="muted klein">nur zur Info – zählt nicht als Bestpreis</span></div>
+  <div class="tabelle"><table>
+    <thead><tr><th>Shop</th><th class="num">Preis</th><th>Angebot</th></tr></thead>
+    <tbody>{% for r in d.letzte.refurbished %}
+      <tr><td><b>{{ anbieter(r) }}</b></td><td class="num"><b>{{ r.preis|eur }}</b></td>
+        <td class="name klein">{% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.name }} {{ icon("extern", "s") }}</a>{% else %}{{ r.name }}{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}
+
 <div class="zweispaltig" style="margin-top:20px">
   <div class="card">
     <div class="card-head"><h2>Shop-Vergleich</h2><span class="muted klein">günstigstes passendes Angebot je Shop</span></div>

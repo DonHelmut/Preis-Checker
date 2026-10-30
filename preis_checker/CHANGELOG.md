@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.12
+- Refurbished/gebraucht/Renewed getrennt: kein Bestpreis, kein Zielpreis- oder Preisfehler-Alarm; eigene Tabelle „Refurbished & gebraucht“ mit Links auf der Produktseite, Hinweis „Refurbished ab …“ auf der Übersicht
+
 ## 1.2.11
 - MediaMarkt/Saturn: „neue und refurbished Angebote ab …“ ist nicht mehr der Neupreis, sondern ein eigenes, gekennzeichnetes Angebot „(neu oder refurbished)“ – zählt mit, wenn günstiger
 - Refurbished-Angebote lösen keinen Preisfehler-Alarm aus
