@@ -27,6 +27,7 @@ class Shop:
     name: str
     url: str           # {q} = Suchbegriff (Query-kodiert), {p} = Pfad-kodiert
     gruppen: tuple[str, ...]
+    zustand: str | None = None  # "refurbished": alle Angebote gebraucht/generalüberholt (eigene Tabelle)
 
 
 SHOP_LISTE = [
@@ -47,6 +48,11 @@ SHOP_LISTE = [
     Shop("mindfactory", "Mindfactory", "https://www.mindfactory.de/search_result.php?search_query={q}", ("hardware",)),
     Shop("caseking", "Caseking", "https://www.caseking.de/search?search={q}", ("hardware",)),
     Shop("proshop", "Proshop", "https://www.proshop.de/?s={q}", ("hardware",)),
+    Shop("ep", "EP: (media@home)", "https://www.ep.de/search?q={q}", ("elektronik",)),
+    Shop("rebuy", "rebuy", "https://www.rebuy.de/kaufen/suchen?q={q}", ("elektronik", "hardware", "allgemein"),
+         "refurbished"),
+    Shop("backmarket", "Back Market", "https://www.backmarket.de/de-de/search?q={q}",
+         ("elektronik", "hardware", "allgemein"), "refurbished"),
 ]
 SHOPS = {s.key: s for s in SHOP_LISTE}
 
@@ -136,7 +142,15 @@ def name(text: str, suche: str | None = None) -> str:
         mit_suche = [l for l in kandidaten if enthaelt_suche(l, suche.split()) and l.lower() != suche.strip().lower()]
         if mit_suche:
             return max(mit_suche, key=len)
-    return max(kandidaten, key=len) if kandidaten else (lines[0] if lines else "?")
+        # Marke in eigener Zeile über dem Titel (EP: „Sonos“ / „Beam (Gen. 2) - Schwarz“)
+        for marke, titel in zip(kandidaten, kandidaten[1:]):
+            echo = suche.strip().lower() in (marke.lower(), titel.lower())
+            if len(marke) <= 30 and not echo and enthaelt_suche(f"{marke} {titel}", suche.split()):
+                return f"{marke} {titel}"
+    if kandidaten:
+        return max(kandidaten, key=len)
+    # Alles in einer Zeile (Back Market): Titel endet vor Bewertung/Preis
+    return re.split(r"\d[,.]\d\s*/\s*5|\d+[.,]\d{2}\s*€|\bAb\s*Preis|\bVon\s+\d", lines[0])[0].strip() if lines else "?"
 
 
 _REFURB = re.compile(r"refurbished|generalüberholt|b-ware|gebraucht|renewed|wie neu|aussteller|retoure", re.I)
@@ -235,6 +249,8 @@ def suchen(page, shop: str, url_vorlage: str, suche: str, cfg: dict, debug: bool
     angebote = []
     for c in cards:
         a = parse_produkt(c, shop, suche)
+        if a and shop in SHOPS and SHOPS[shop].zustand:
+            a.zustand = SHOPS[shop].zustand
         if a:
             angebote += [a, *nebenangebote(c, a)]
     if debug or not angebote:
