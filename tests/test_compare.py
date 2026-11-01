@@ -91,3 +91,14 @@ def test_refurbished_nur_anzeigen():
     assert e["bester_preis"] == 449.0 and not e["ziel_erreicht"] and not e["verdacht"]
     assert [r["preis"] for r in e["refurbished"]] == [329.0, 407.99]
     assert all(r["preis"] >= 449 for r in e["angebote"])
+
+
+def test_refurbished_ohne_spiele():
+    from preischecker.models import ProduktAngebot
+    artikel = {"suche": "Nintendo Switch 2", "min_preis": 300}
+    a = [ProduktAngebot("FC 26 Nintendo Switch 2", 19.09, "rebuy", zustand="refurbished"),
+         ProduktAngebot("Goodnight Universe Nintendo Switch 2", 16.79, "rebuy", zustand="refurbished"),
+         ProduktAngebot("Nintendo Switch 2 Konsole schwarz", 389.0, "rebuy", zustand="refurbished"),
+         ProduktAngebot("Nintendo Switch 2 Konsole (Zustand gut)", 279.0, "backmarket", zustand="refurbished")]
+    e = compare.produkt({"produkte": {}}, artikel, a)
+    assert [r["preis"] for r in e["refurbished"]] == [279.0, 389.0]

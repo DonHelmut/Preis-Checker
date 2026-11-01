@@ -99,7 +99,10 @@ def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: l
             continue
         grund = ablehnungsgrund(a, artikel)
         if ist_refurbished(a):  # nur anzeigen: kein Bestpreis, kein Alarm
-            if grund in (None, "unter Mindestpreis"):
+            # Mindestpreis gilt auch hier (sonst Spiele/Zubehör für ein paar Euro); refurbished darf bis 40 % darunter
+            mindest = artikel.get("min_preis") or 0
+            if grund is None or (grund == "unter Mindestpreis" and a.preis >= mindest * 0.6
+                                 and sieht_nach_hauptprodukt_aus(a.name)):
                 key = (a.shop, a.name.lower())
                 if key not in refurb or a.preis < refurb[key]["preis"]:
                     row = a.to_dict()

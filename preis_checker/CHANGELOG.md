@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.17
+- Fix: In „Refurbished & gebraucht“ tauchten Spiele für wenige Euro auf. Mindestpreis gilt jetzt auch dort (refurbished bis 40 % darunter erlaubt), Zubehör/Spiele bleiben draußen
+
 ## 1.2.16
 - Fix: „Switch 2“ passte auf die alte Switch OLED („… 2 Controller“). Zahlen im Suchbegriff müssen jetzt beim Wort davor stehen („Switch 2“, „Gen.2“, „2. Generation“)
 
