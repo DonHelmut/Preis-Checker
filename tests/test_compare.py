@@ -102,3 +102,15 @@ def test_refurbished_ohne_spiele():
          ProduktAngebot("Nintendo Switch 2 Konsole (Zustand gut)", 279.0, "backmarket", zustand="refurbished")]
     e = compare.produkt({"produkte": {}}, artikel, a)
     assert [r["preis"] for r in e["refurbished"]] == [279.0, 389.0]
+
+
+def test_joycon_straps_kein_preisfehler():
+    from preischecker.models import ProduktAngebot
+    artikel = {"suche": "Nintendo Switch 2", "min_preis": 300}
+    a = [ProduktAngebot("Nintendo Controller 10015103 / Switch 2 Joy-Con Straps Blau/Rot", 11.94, "mindfactory"),
+         ProduktAngebot("Nintendo Switch 2 Joy-Con 2 Paar", 89.99, "mindfactory"),
+         ProduktAngebot("Nintendo Switch 2 Konsole", 49.0, "amazon", "https://a"),
+         ProduktAngebot("Nintendo Switch 2", 449.0, "saturn")]
+    e = compare.produkt({"produkte": {}}, artikel, a)
+    assert [v["preis"] for v in e["verdacht"]] == [49.0]
+    assert e["bester_preis"] == 449.0

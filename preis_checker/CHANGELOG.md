@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.18
+- Fix: Joy-Con-Straps (11,94 €) wurden als „möglicher Preisfehler“ gemeldet. Zubehör wie Straps, Joy-Con, Controller, Kabel zählt nicht mehr; außerdem muss ein Preisfehler mindestens 15 % des Mindestpreises kosten
+
 ## 1.2.17
 - Fix: In „Refurbished & gebraucht“ tauchten Spiele für wenige Euro auf. Mindestpreis gilt jetzt auch dort (refurbished bis 40 % darunter erlaubt), Zubehör/Spiele bleiben draußen
 
