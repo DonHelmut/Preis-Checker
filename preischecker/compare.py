@@ -89,6 +89,7 @@ def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: l
     from .sources.shops import (VERGLEICHSPORTALE, ablehnungsgrund, ausgeschlossen, ist_refurbished,
                                 preisfehler_kandidat, sieht_nach_hauptprodukt_aus)
     nur_lieferbar = cfg["produkte"].get("nur_lieferbar", True)
+    preisfehler_an = cfg["produkte"].get("preisfehler_melden", False)  # Standard aus: zu viele Fehlalarme
     beste: dict[tuple, dict] = {}
     verdacht: dict[tuple, dict] = {}
     refurb: dict[tuple, dict] = {}
@@ -109,7 +110,7 @@ def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: l
                     row.pop("rohtext")
                     refurb[key] = row
             continue
-        if grund == "unter Mindestpreis" and preisfehler_kandidat(a, artikel):
+        if grund == "unter Mindestpreis" and preisfehler_an and preisfehler_kandidat(a, artikel):
             if a.shop in VERGLEICHSPORTALE and not a.bestaetigt:
                 continue  # Portal-„ab“-Preis ohne passenden Händler (oft gebraucht/Variante) → kein Alarm
             key = (a.shop, a.name.lower())

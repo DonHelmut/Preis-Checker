@@ -45,6 +45,8 @@ ABSCHNITTE = [
         ("produkte.nur_lieferbar", "Nur lieferbare Angebote", "bool", ""),
         ("produkte.schnaeppchen_prozent", "Schnäppchen ab", "float", "% unter eigenem Durchschnitt / Shop-Rabatt"),
         ("produkte.markt_prozent", "Preisfehler ab", "float", "% unter anderen Shops"),
+        ("produkte.preisfehler_melden", "Mögliche Preisfehler unter Mindestpreis melden", "bool",
+         "aus = keine Meldungen zu Angeboten unter dem Mindestpreis (oft Zubehör)"),
         ("produkte.parallel", "Gleichzeitige Abfragen", "int", "Browser-Tabs parallel (je ca. 250 MB RAM)"),
         ("produkte.sperre_pause_stunden", "Pause nach Bot-Sperre", "float", "Stunden (0 = nie pausieren)"),
         ("produkte.empfindlich_abstand_stunden", "Danach höchstens alle", "float", "Stunden – für Shops, die in den letzten 7 Tagen gesperrt haben"),

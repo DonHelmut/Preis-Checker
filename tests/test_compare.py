@@ -61,7 +61,7 @@ def test_internet_ohne_mobilfunk_young_und_nicht_abschliessbar():
 def test_preisfehler_verdacht_unter_mindestpreis(monkeypatch):
     from preischecker.models import ProduktAngebot
     from preischecker import notify
-    cfg = {"produkte": {}}
+    cfg = {"produkte": {"preisfehler_melden": True}}
     artikel = {"suche": "Nintendo Switch 2", "min_preis": 300, "darf_nicht_enthalten": ["schutzfolie"]}
     a = [ProduktAngebot("Nintendo Switch 2 Spielkonsole inkl. Dock und Joy-Con Controller", 49.0, "amazon", "https://a"),
          ProduktAngebot("Hülle für Nintendo Switch 2", 19.99, "amazon"),
@@ -111,7 +111,7 @@ def test_joycon_straps_kein_preisfehler():
          ProduktAngebot("Nintendo Switch 2 Joy-Con 2 Paar", 89.99, "mindfactory"),
          ProduktAngebot("Nintendo Switch 2 Konsole", 49.0, "amazon", "https://a"),
          ProduktAngebot("Nintendo Switch 2", 449.0, "saturn")]
-    e = compare.produkt({"produkte": {}}, artikel, a)
+    e = compare.produkt({"produkte": {"preisfehler_melden": True}}, artikel, a)
     assert [v["preis"] for v in e["verdacht"]] == [49.0]
     assert e["bester_preis"] == 449.0
 
@@ -137,3 +137,10 @@ def test_zubehoer_fremdmarke_kein_preisfehler():
     assert not preisfehler_kandidat(ProduktAngebot("Hori Piranha Plant Kamera Nintendo Switch 2", 59.0, "conrad"), art)
     assert preisfehler_kandidat(ProduktAngebot("Nintendo Switch 2 Konsole", 59.0, "conrad"), art)
     assert preisfehler_kandidat(ProduktAngebot("NEU Nintendo Switch 2 Konsole", 59.0, "conrad"), art)
+
+
+def test_preisfehler_standard_aus():
+    from preischecker.models import ProduktAngebot
+    a = [ProduktAngebot("Nintendo Switch 2 Konsole", 49.0, "amazon"), ProduktAngebot("Nintendo Switch 2", 449.0, "saturn")]
+    e = compare.produkt({"produkte": {}}, {"suche": "Nintendo Switch 2", "min_preis": 300}, a)
+    assert e["verdacht"] == [] and e["bester_preis"] == 449.0

@@ -46,4 +46,5 @@ def load_config(path: Path | str | None = None) -> dict:
     p.setdefault("sperre_pause_stunden", 24)
     p.setdefault("empfindlich_abstand_stunden", 20)
     p.setdefault("haendler_ausschliessen", ["ebay", "kleinanzeigen"])
+    p.setdefault("preisfehler_melden", False)
     return cfg
