@@ -126,3 +126,14 @@ def test_spiele_kein_preisfehler():
         assert not preisfehler_kandidat(ProduktAngebot(name, 59.99, "proshop"), art), name
     assert preisfehler_kandidat(ProduktAngebot("Nintendo Switch 2 Konsole", 59.99, "proshop"), art)
     assert preisfehler_kandidat(ProduktAngebot("Nintendo Switch 2 - Konsole schwarz", 59.99, "proshop"), art)
+
+
+def test_zubehoer_fremdmarke_kein_preisfehler():
+    from preischecker.sources.shops import preisfehler_kandidat
+    from preischecker.models import ProduktAngebot
+    art = {"suche": "Nintendo Switch 2", "min_preis": 300}
+    assert not preisfehler_kandidat(ProduktAngebot("Venom VS4957, Akku, Nintendo Switch 2, Black, Orange", 46.46,
+                                                   "conrad"), art)
+    assert not preisfehler_kandidat(ProduktAngebot("Hori Piranha Plant Kamera Nintendo Switch 2", 59.0, "conrad"), art)
+    assert preisfehler_kandidat(ProduktAngebot("Nintendo Switch 2 Konsole", 59.0, "conrad"), art)
+    assert preisfehler_kandidat(ProduktAngebot("NEU Nintendo Switch 2 Konsole", 59.0, "conrad"), art)

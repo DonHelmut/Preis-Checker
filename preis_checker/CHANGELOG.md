@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.20
+- Preisfehler nur noch, wenn der Titel mit dem Produkt beginnt („Nintendo Switch 2 …“). Zubehör fremder Marken („Venom … Akku, Nintendo Switch 2“) wird nicht mehr gemeldet; Akku/Powerbank als Zubehör
+
 ## 1.2.19
 - Fix: Spiele („Dynasty Warriors: Origins - Nintendo Switch 2 - PEGI 16“) wurden als möglicher Preisfehler gemeldet. Erkennung über PEGI/USK, Game-Key, Genres, Editionen und „Titel - Plattform“
 

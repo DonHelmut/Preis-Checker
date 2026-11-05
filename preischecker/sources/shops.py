@@ -353,7 +353,7 @@ _ZUBEHOER = re.compile(
     r"adapter|ladestation|ladegerät|netzteil|halter|ständer|staender|grip|\bspiele?\b|videospiel|"
     r"gutschein|guthaben|\bcode\b|abo\b|mitgliedschaft|ersatz|reparatur|kühler|kuehler|lüfter|luefter|"
     r"backplate|wasserkühl|riser|fernbedienung|\bleer|attrappe|dummy|aufkleber|poster|figur|tasse|"
-    r"straps?\b|handschlaufe|zubehör|zubehoer|kabel|ersatzteil|"
+    r"straps?\b|handschlaufe|zubehör|zubehoer|kabel|ersatzteil|akku|powerbank|batterie|ladeger|"
     r"\bpegi\s*\d|\busk\s*\d|game-?key|key-?card|download-?code|\bdlc\b|season pass|"
     r"beat ?'?em ?up|rollenspiel|\brpg\b|shooter|jump ?'?n'? ?run|rennspiel|sportspiel|adventure|"
     r"\b(deluxe|collector'?s?|gold|ultimate|complete) edition|"
@@ -383,9 +383,17 @@ def _fuer_plattform(name: str, suche: str) -> bool:
     return i > 0 and bool(re.search(r"\w{3,}.*[-–:/]\s*$", vorne))
 
 
+def _titel_beginnt_mit_suche(name: str, suche: str) -> bool:
+    """Das Produkt selbst heißt so („Nintendo Switch 2 Konsole …“); Zubehör nennt erst die eigene Marke
+    („Venom VS4957, Akku, Nintendo Switch 2“). Erlaubt ist höchstens ein kurzes Wort davor (z. B. Händlerpräfix)."""
+    erstes = suche.split()[0].lower() if suche.split() else ""
+    return bool(erstes) and 0 <= name.lower().find(erstes) <= 10
+
+
 def preisfehler_kandidat(angebot: ProduktAngebot, artikel: dict) -> bool:
     """Unter dem Mindestpreis, sonst aber passend und kein Zubehör."""
-    return (not angebot.zustand and not _fuer_plattform(angebot.name, artikel["suche"]) and ablehnungsgrund(angebot, artikel) == "unter Mindestpreis"
+    return (not angebot.zustand and not _fuer_plattform(angebot.name, artikel["suche"])
+            and _titel_beginnt_mit_suche(angebot.name, artikel["suche"]) and ablehnungsgrund(angebot, artikel) == "unter Mindestpreis"
             and angebot.preis >= (artikel.get("min_preis") or 0) * PREISFEHLER_MIN_ANTEIL
             and sieht_nach_hauptprodukt_aus(angebot.name))
 
