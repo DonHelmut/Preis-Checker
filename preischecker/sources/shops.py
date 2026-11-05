@@ -354,6 +354,9 @@ _ZUBEHOER = re.compile(
     r"gutschein|guthaben|\bcode\b|abo\b|mitgliedschaft|ersatz|reparatur|kühler|kuehler|lüfter|luefter|"
     r"backplate|wasserkühl|riser|fernbedienung|\bleer|attrappe|dummy|aufkleber|poster|figur|tasse|"
     r"straps?\b|handschlaufe|zubehör|zubehoer|kabel|ersatzteil|"
+    r"\bpegi\s*\d|\busk\s*\d|game-?key|key-?card|download-?code|\bdlc\b|season pass|"
+    r"beat ?'?em ?up|rollenspiel|\brpg\b|shooter|jump ?'?n'? ?run|rennspiel|sportspiel|adventure|"
+    r"\b(deluxe|collector'?s?|gold|ultimate|complete) edition|"
     r"^\W*(\w+\s+){0,2}(controller|joy-?con|pro controller)\b", re.I)  # Titel, der mit „Controller“ beginnt
 # Unter diesem Anteil des Mindestpreises ist es kein Preisfehler mehr, sondern Kleinkram (Straps, Kabel …)
 PREISFEHLER_MIN_ANTEIL = 0.15
@@ -373,9 +376,16 @@ def sieht_nach_hauptprodukt_aus(name: str) -> bool:
     return True
 
 
+def _fuer_plattform(name: str, suche: str) -> bool:
+    """„Dynasty Warriors: Origins - Nintendo Switch 2“: Suchbegriff erst nach einem Titel → Spiel/Zubehör dafür."""
+    i = norm(name).find(norm(suche))
+    vorne = name.split(suche.split()[0])[0] if suche.split() else ""
+    return i > 0 and bool(re.search(r"\w{3,}.*[-–:/]\s*$", vorne))
+
+
 def preisfehler_kandidat(angebot: ProduktAngebot, artikel: dict) -> bool:
     """Unter dem Mindestpreis, sonst aber passend und kein Zubehör."""
-    return (not angebot.zustand and ablehnungsgrund(angebot, artikel) == "unter Mindestpreis"
+    return (not angebot.zustand and not _fuer_plattform(angebot.name, artikel["suche"]) and ablehnungsgrund(angebot, artikel) == "unter Mindestpreis"
             and angebot.preis >= (artikel.get("min_preis") or 0) * PREISFEHLER_MIN_ANTEIL
             and sieht_nach_hauptprodukt_aus(angebot.name))
 

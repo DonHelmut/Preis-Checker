@@ -114,3 +114,15 @@ def test_joycon_straps_kein_preisfehler():
     e = compare.produkt({"produkte": {}}, artikel, a)
     assert [v["preis"] for v in e["verdacht"]] == [49.0]
     assert e["bester_preis"] == 449.0
+
+
+def test_spiele_kein_preisfehler():
+    from preischecker.sources.shops import preisfehler_kandidat
+    from preischecker.models import ProduktAngebot
+    art = {"suche": "Nintendo Switch 2", "min_preis": 300}
+    for name in ["Dynasty Warriors: Origins - Nintendo Switch 2 - Beat 'em Up - PEGI 16",
+                 "Mario Kart World - Nintendo Switch 2", "Hogwarts Legacy Deluxe Edition Nintendo Switch 2",
+                 "Nintendo Switch 2 Game-Key Card Elden Ring"]:
+        assert not preisfehler_kandidat(ProduktAngebot(name, 59.99, "proshop"), art), name
+    assert preisfehler_kandidat(ProduktAngebot("Nintendo Switch 2 Konsole", 59.99, "proshop"), art)
+    assert preisfehler_kandidat(ProduktAngebot("Nintendo Switch 2 - Konsole schwarz", 59.99, "proshop"), art)
