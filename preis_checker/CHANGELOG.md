@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 1.2.20
+- Warnung „möglicher Preisfehler“ (Angebote unter dem Mindestpreis) standardmäßig aus – brachte bisher nur Zubehör/andere Produkte. In den Einstellungen wieder einschaltbar
+- Bestpreis, Zielpreis-Alarm und „deutlich günstiger als andere Shops“ bleiben unverändert
+
 ## 1.2.19
 - Fix: Spiele („Dynasty Warriors: Origins - Nintendo Switch 2 - PEGI 16“) wurden als möglicher Preisfehler gemeldet. Erkennung über PEGI/USK, Game-Key, Genres, Editionen und „Titel - Plattform“
 
