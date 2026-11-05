@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.19
+- Fix: Spiele („Dynasty Warriors: Origins - Nintendo Switch 2 - PEGI 16“) wurden als möglicher Preisfehler gemeldet. Erkennung über PEGI/USK, Game-Key, Genres, Editionen und „Titel - Plattform“
+
 ## 1.2.18
 - Fix: Joy-Con-Straps (11,94 €) wurden als „möglicher Preisfehler“ gemeldet. Zubehör wie Straps, Joy-Con, Controller, Kabel zählt nicht mehr; außerdem muss ein Preisfehler mindestens 15 % des Mindestpreises kosten
 
