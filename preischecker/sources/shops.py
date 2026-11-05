@@ -352,16 +352,31 @@ _ZUBEHOER = re.compile(
     r"\b(für|fuer|for|kompatibel|passend|geeignet)\b|hülle|huelle|\bcase\b|cover|tasche|folie|glas|schutz|skin|"
     r"adapter|ladestation|ladegerät|netzteil|halter|ständer|staender|grip|\bspiele?\b|videospiel|"
     r"gutschein|guthaben|\bcode\b|abo\b|mitgliedschaft|ersatz|reparatur|kühler|kuehler|lüfter|luefter|"
-    r"backplate|wasserkühl|riser|fernbedienung|\bleer|attrappe|dummy|aufkleber|poster|figur|tasse", re.I)
+    r"backplate|wasserkühl|riser|fernbedienung|\bleer|attrappe|dummy|aufkleber|poster|figur|tasse|"
+    r"straps?\b|handschlaufe|zubehör|zubehoer|kabel|ersatzteil|"
+    r"^\W*(\w+\s+){0,2}(controller|joy-?con|pro controller)\b", re.I)  # Titel, der mit „Controller“ beginnt
+# Unter diesem Anteil des Mindestpreises ist es kein Preisfehler mehr, sondern Kleinkram (Straps, Kabel …)
+PREISFEHLER_MIN_ANTEIL = 0.15
+
+
+_EINZELTEIL = re.compile(r"(joy-?con|controller|gamepad)\b", re.I)
+_MITGELIEFERT = re.compile(r"inkl|incl|mit|und|plus|\+|&|zwei|2x", re.I)
 
 
 def sieht_nach_hauptprodukt_aus(name: str) -> bool:
-    return len(name) <= 160 and not _ZUBEHOER.search(name)
+    if len(name) > 160 or _ZUBEHOER.search(name):
+        return False
+    # „Joy-Con 2 Paar“ ist Zubehör, „Konsole inkl. Joy-Con“ nicht
+    for m in _EINZELTEIL.finditer(name):
+        if not _MITGELIEFERT.search(name[max(0, m.start() - 30):m.start()]):
+            return False
+    return True
 
 
 def preisfehler_kandidat(angebot: ProduktAngebot, artikel: dict) -> bool:
     """Unter dem Mindestpreis, sonst aber passend und kein Zubehör."""
     return (not angebot.zustand and ablehnungsgrund(angebot, artikel) == "unter Mindestpreis"
+            and angebot.preis >= (artikel.get("min_preis") or 0) * PREISFEHLER_MIN_ANTEIL
             and sieht_nach_hauptprodukt_aus(angebot.name))
 
 

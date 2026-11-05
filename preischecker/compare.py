@@ -87,7 +87,7 @@ def internet(cfg: dict, angebote: list[InternetAngebot]) -> dict:
 def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: list[float] | None = None) -> dict:
     """verlauf = bisherige Bestpreise (für Schnäppchen-Erkennung)."""
     from .sources.shops import (VERGLEICHSPORTALE, ablehnungsgrund, ausgeschlossen, ist_refurbished,
-                                sieht_nach_hauptprodukt_aus)
+                                preisfehler_kandidat, sieht_nach_hauptprodukt_aus)
     nur_lieferbar = cfg["produkte"].get("nur_lieferbar", True)
     beste: dict[tuple, dict] = {}
     verdacht: dict[tuple, dict] = {}
@@ -109,7 +109,7 @@ def produkt(cfg: dict, artikel: dict, angebote: list[ProduktAngebot], verlauf: l
                     row.pop("rohtext")
                     refurb[key] = row
             continue
-        if grund == "unter Mindestpreis" and not a.zustand and sieht_nach_hauptprodukt_aus(a.name):
+        if grund == "unter Mindestpreis" and preisfehler_kandidat(a, artikel):
             if a.shop in VERGLEICHSPORTALE and not a.bestaetigt:
                 continue  # Portal-„ab“-Preis ohne passenden Händler (oft gebraucht/Variante) → kein Alarm
             key = (a.shop, a.name.lower())
