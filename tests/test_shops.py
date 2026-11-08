@@ -256,3 +256,7 @@ def test_zahl_gehoert_zum_wort_davor():
     assert enthaelt_suche("Sonos Beam (Gen.2)", beam)
     assert enthaelt_suche("SONOS Beam Gen.2, Soundbar", beam)
     assert enthaelt_suche("AMD Radeon RX 9070 XT 16GB", "RX 9070 XT".split())
+
+
+def test_netto_in_klammern_proshop():
+    assert preis("ASRock Radeon RX 9070 XT Steel Legend Dark\\nVerfügbar\\n1.017,42 €\\n(854,97 €)\\nBestellen") == 1017.42
