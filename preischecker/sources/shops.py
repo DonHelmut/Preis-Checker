@@ -103,9 +103,13 @@ def _betraege(text: str):
 
 def preis(text: str) -> float | None:
     """Endpreis für Privatkunden. Nettopreise (Geschäftskunden, „zzgl. MwSt.“) werden mit 19 % hochgerechnet."""
-    kandidaten = [(w, umfeld) for w, davor, danach, umfeld in _betraege(text)
-                  if not _KEIN_PREIS_DAVOR.search(davor) and not _KEIN_PREIS_DANACH.search(danach)
-                  and not _FINANZIERUNG.search(davor) and not _NEBENANGEBOT.search(davor)]
+    roh = [(w, davor, umfeld) for w, davor, danach, umfeld in _betraege(text)
+           if not _KEIN_PREIS_DAVOR.search(davor) and not _KEIN_PREIS_DANACH.search(danach)
+           and not _FINANZIERUNG.search(davor) and not _NEBENANGEBOT.search(davor)]
+    # „1.017,42 € (854,97 €)“ (Proshop): Betrag in Klammern, zu dem es den Bruttobetrag gibt, ist netto
+    brutto = [w for w, *_ in roh]
+    kandidaten = [(w, umfeld) for w, davor, umfeld in roh
+                  if not (davor.rstrip().endswith("(") and any(abs(b - w * MWST) <= 0.02 * b for b in brutto))]
     if not kandidaten:
         return None
     if not _NETTO.search(text):

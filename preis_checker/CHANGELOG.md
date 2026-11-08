@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 1.2.21
+- Fix Proshop: Nettopreis in Klammern („1.017,42 € (854,97 €)“) wurde als Preis genommen
+
 ## 1.2.20
 - Warnung „möglicher Preisfehler“ (Angebote unter dem Mindestpreis) standardmäßig aus – brachte bisher nur Zubehör/andere Produkte. In den Einstellungen wieder einschaltbar
 - Bestpreis, Zielpreis-Alarm und „deutlich günstiger als andere Shops“ bleiben unverändert
